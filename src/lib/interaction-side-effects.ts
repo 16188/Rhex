@@ -77,11 +77,6 @@ registerInteractionEffectHooks({
         triggerType: "REPLY",
         triggerCommentId: input.commentId,
       })),
-      swallowSideEffect(`comment-create:lottery:${input.commentId}`, () => enrollUserInLotteryPool({
-        postId: input.postId,
-        userId: input.userId,
-        replyCommentId: input.commentId,
-      })),
     ])
     revalidatePostCommentCache({ postId: input.postId })
     revalidatePostViewerCache(input.userId)
@@ -121,6 +116,12 @@ export async function handleCommentCreateSideEffects(input: {
   userId: number
   commentId: string
 }) {
+  await swallowSideEffect(`comment-create:lottery:${input.commentId}`, () => enrollUserInLotteryPool({
+    postId: input.postId,
+    userId: input.userId,
+    replyCommentId: input.commentId,
+  }))
+
   void enqueueCommentCreateEffects({
     postId: input.postId,
     userId: input.userId,

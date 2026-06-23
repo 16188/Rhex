@@ -611,7 +611,13 @@ export async function enrollUserInLotteryPool(input: { postId: string; userId: n
     joinedAt: new Date(),
   })
 
-  await maybeAutoDrawLottery(input.postId)
+  await maybeAutoDrawLottery(input.postId).catch((error) => {
+    console.error("[lottery] auto draw failed after participant enrollment", {
+      postId: input.postId,
+      userId: input.userId,
+      error,
+    })
+  })
   return { joined: true, reason: null }
 }
 
