@@ -83,6 +83,9 @@ enum LotteryConditionType {
   USER_LEVEL
   VIP_LEVEL
   USER_POINTS
+  USER_POST_COUNT
+  DAILY_POST_COUNT
+  DAILY_COMMENT_COUNT
 }
 
 enum LotteryConditionOperator {

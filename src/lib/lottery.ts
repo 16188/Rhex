@@ -38,10 +38,10 @@ import { revalidateUserSurfaceCache } from "@/lib/user-surface"
 
 
 
-export type LotteryConditionTypeValue = "REPLY_CONTENT_LENGTH" | "REPLY_KEYWORD" | "LIKE_POST" | "FAVORITE_POST" | "REGISTER_DAYS" | "USER_LEVEL" | "VIP_LEVEL" | "USER_POINTS"
+export type LotteryConditionTypeValue = "REPLY_CONTENT_LENGTH" | "REPLY_KEYWORD" | "LIKE_POST" | "FAVORITE_POST" | "REGISTER_DAYS" | "USER_LEVEL" | "VIP_LEVEL" | "USER_POINTS" | "USER_POST_COUNT" | "DAILY_POST_COUNT" | "DAILY_COMMENT_COUNT"
 export type LotteryConditionOperatorValue = "GTE" | "EQ"
 
-const SUPPORTED_LOTTERY_CONDITION_TYPES = new Set<LotteryConditionTypeValue>(["REPLY_CONTENT_LENGTH", "REPLY_KEYWORD", "LIKE_POST", "FAVORITE_POST", "REGISTER_DAYS", "USER_LEVEL", "VIP_LEVEL", "USER_POINTS"])
+const SUPPORTED_LOTTERY_CONDITION_TYPES = new Set<LotteryConditionTypeValue>(["REPLY_CONTENT_LENGTH", "REPLY_KEYWORD", "LIKE_POST", "FAVORITE_POST", "REGISTER_DAYS", "USER_LEVEL", "VIP_LEVEL", "USER_POINTS", "USER_POST_COUNT", "DAILY_POST_COUNT", "DAILY_COMMENT_COUNT"])
 const SUPPORTED_LOTTERY_CONDITION_OPERATORS = new Set<LotteryConditionOperatorValue>(["GTE", "EQ"])
 
 export interface LotteryConditionInput {
@@ -217,9 +217,27 @@ function buildConditionDescription(type: LotteryConditionTypeValue, operator: Lo
       return `VIP 等级至少 ${value}`
     case "USER_POINTS":
       return `积分至少 ${value}`
+    case "USER_POST_COUNT":
+      return `\u7d2f\u8ba1\u53d1\u5e16\u6570\u81f3\u5c11 ${value}`
+    case "DAILY_POST_COUNT":
+      return `\u4eca\u65e5\u53d1\u5e16\u6570\u81f3\u5c11 ${value}`
+    case "DAILY_COMMENT_COUNT":
+      return `\u4eca\u65e5\u56de\u5e16\u6570\u81f3\u5c11 ${value}`
     default:
       return `${type} ${operator} ${value}`
   }
+}
+
+function compareLotteryConditionValue(actual: number, operator: LotteryConditionOperatorValue, expected: number) {
+  return operator === "EQ" ? actual === expected : actual >= expected
+}
+
+function getLocalDayRange(date = new Date()) {
+  const start = new Date(date)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+  return { start, end }
 }
 
 function buildConditionGroupLabel(index: number, total: number) {
@@ -421,14 +439,51 @@ async function evaluateSingleCondition(input: {
     case "REGISTER_DAYS": {
       const requiredDays = Number(condition.value)
       const diffDays = Math.floor((Date.now() - new Date(user.createdAt).getTime()) / (24 * 60 * 60 * 1000))
-      return diffDays >= requiredDays
+      return compareLotteryConditionValue(diffDays, condition.operator, requiredDays)
     }
     case "USER_LEVEL":
-      return user.level >= Number(condition.value)
+      return compareLotteryConditionValue(user.level, condition.operator, Number(condition.value))
     case "VIP_LEVEL":
-      return user.vipLevel >= Number(condition.value)
+      return compareLotteryConditionValue(user.vipLevel, condition.operator, Number(condition.value))
     case "USER_POINTS":
-      return user.points >= Number(condition.value)
+      return compareLotteryConditionValue(user.points, condition.operator, Number(condition.value))
+    case "USER_POST_COUNT": {
+      const count = await prisma.post.count({
+        where: {
+          authorId: user.id,
+          status: "NORMAL",
+        },
+      })
+      return compareLotteryConditionValue(count, condition.operator, Number(condition.value))
+    }
+    case "DAILY_POST_COUNT": {
+      const { start, end } = getLocalDayRange()
+      const count = await prisma.post.count({
+        where: {
+          authorId: user.id,
+          status: "NORMAL",
+          createdAt: {
+            gte: start,
+            lt: end,
+          },
+        },
+      })
+      return compareLotteryConditionValue(count, condition.operator, Number(condition.value))
+    }
+    case "DAILY_COMMENT_COUNT": {
+      const { start, end } = getLocalDayRange()
+      const count = await prisma.comment.count({
+        where: {
+          userId: user.id,
+          status: "NORMAL",
+          createdAt: {
+            gte: start,
+            lt: end,
+          },
+        },
+      })
+      return compareLotteryConditionValue(count, condition.operator, Number(condition.value))
+    }
     default:
       return false
   }

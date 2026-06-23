@@ -116,6 +116,36 @@ const LOTTERY_CONDITION_TYPE_CONFIG = {
     placeholder: (pointName: string) => `最低${pointName}，如 100`,
     defaultDescription: (pointName: string) => `${pointName}达到要求`,
   },
+  USER_POST_COUNT: {
+    label: "\u7d2f\u8ba1\u53d1\u5e16\u6570",
+    category: "THRESHOLD",
+    helperText: "\u9650\u5236\u7528\u6237\u516c\u5f00\u53d1\u5e16\u603b\u6570\u8fbe\u5230\u6307\u5b9a\u503c\u3002",
+    valueMode: "number",
+    defaultValue: "1",
+    defaultOperator: "GTE",
+    placeholder: () => "\u6700\u5c11\u7d2f\u8ba1\u53d1\u5e16\u6570\uff0c\u5982 10",
+    defaultDescription: () => "\u7d2f\u8ba1\u53d1\u5e16\u6570\u8fbe\u5230\u8981\u6c42",
+  },
+  DAILY_POST_COUNT: {
+    label: "\u4eca\u65e5\u53d1\u5e16\u6570",
+    category: "THRESHOLD",
+    helperText: "\u9650\u5236\u7528\u6237\u5f53\u65e5\u516c\u5f00\u53d1\u5e16\u6570\u8fbe\u5230\u6307\u5b9a\u503c\u3002",
+    valueMode: "number",
+    defaultValue: "1",
+    defaultOperator: "GTE",
+    placeholder: () => "\u6700\u5c11\u4eca\u65e5\u53d1\u5e16\u6570\uff0c\u5982 1",
+    defaultDescription: () => "\u4eca\u65e5\u53d1\u5e16\u6570\u8fbe\u5230\u8981\u6c42",
+  },
+  DAILY_COMMENT_COUNT: {
+    label: "\u4eca\u65e5\u56de\u5e16\u6570",
+    category: "THRESHOLD",
+    helperText: "\u9650\u5236\u7528\u6237\u5f53\u65e5\u6b63\u5e38\u56de\u5e16\u6570\u8fbe\u5230\u6307\u5b9a\u503c\u3002",
+    valueMode: "number",
+    defaultValue: "1",
+    defaultOperator: "GTE",
+    placeholder: () => "\u6700\u5c11\u4eca\u65e5\u56de\u5e16\u6570\uff0c\u5982 3",
+    defaultDescription: () => "\u4eca\u65e5\u56de\u5e16\u6570\u8fbe\u5230\u8981\u6c42",
+  },
 } as const satisfies Record<string, LotteryConditionTypeConfig>
 
 const LOTTERY_CONDITION_TYPE_ORDER = [
@@ -127,6 +157,9 @@ const LOTTERY_CONDITION_TYPE_ORDER = [
   "USER_LEVEL",
   "VIP_LEVEL",
   "USER_POINTS",
+  "USER_POST_COUNT",
+  "DAILY_POST_COUNT",
+  "DAILY_COMMENT_COUNT",
 ] as const
 
 const LOTTERY_CONDITION_VALUE_MODES_WITH_INPUT = new Set<LotteryConditionValueMode>(["number", "text", "user-level", "vip-level"])

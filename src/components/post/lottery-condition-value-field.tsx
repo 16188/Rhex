@@ -23,6 +23,10 @@ function getLotteryConditionValueMode(conditionType: string): ConditionValueFiel
     return "vip-level"
   }
 
+  if (conditionType === "USER_POST_COUNT" || conditionType === "DAILY_POST_COUNT" || conditionType === "DAILY_COMMENT_COUNT") {
+    return "number"
+  }
+
   return "text"
 }
 
