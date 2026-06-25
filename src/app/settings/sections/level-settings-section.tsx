@@ -54,9 +54,9 @@ export function LevelSettingsSection({ data }: { data: SettingsPageData }) {
 
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard
-          title="\u4eca\u65e5\u83b7\u8d5e"
+          title={"\u4eca\u65e5\u83b7\u8d5e"}
           value={levelView.snapshot.dailyReceivedLikeCount}
-          hint="\u4eca\u5929\u5e16\u5b50\u548c\u56de\u590d\u6536\u5230\u7684\u70b9\u8d5e"
+          hint={"\u4eca\u5929\u5e16\u5b50\u548c\u56de\u590d\u6536\u5230\u7684\u70b9\u8d5e"}
           icon={<ThumbsUp className="h-4 w-4" />}
         />
         <StatCard

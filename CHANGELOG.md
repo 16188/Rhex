@@ -2,6 +2,7 @@
 
 ## 2026-06-26
 
+- Fixed the level center daily received likes card rendering escaped Unicode text instead of Chinese labels.
 - Added a lottery participation condition for daily received likes and displayed daily received likes on the level center.
 
 ## 2026-06-23
