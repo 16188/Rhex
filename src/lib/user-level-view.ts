@@ -2,6 +2,7 @@ import { getLevelBadgeData } from "@/lib/level-badge"
 import { getCurrentUser } from "@/lib/auth"
 import { getUserCheckInStreakSummary } from "@/lib/check-in-streak-service"
 import { getLevelDefinitions, getLevelGrowthSnapshot } from "@/lib/level-system"
+import { countUserDailyReceivedLikes } from "@/db/level-system-queries"
 
 export interface UserLevelProgressView {
   currentLevel: {
@@ -24,6 +25,7 @@ export interface UserLevelProgressView {
     postCount: number
     commentCount: number
     likeReceivedCount: number
+    dailyReceivedLikeCount: number
     checkInDays: number
     currentCheckInStreak: number
     maxCheckInStreak: number
@@ -46,11 +48,13 @@ export async function getCurrentUserLevelProgressView(): Promise<UserLevelProgre
     return null
   }
 
-  const [snapshot, levels, currentBadge, streakSummary] = await Promise.all([
+  const todayRange = getLocalDayRange()
+  const [snapshot, levels, currentBadge, streakSummary, dailyReceivedLikeCount] = await Promise.all([
     getLevelGrowthSnapshot(user.id),
     getLevelDefinitions(),
     getLevelBadgeData(user.level),
     getUserCheckInStreakSummary(user.id),
+    countUserDailyReceivedLikes(user.id, todayRange),
   ])
 
   if (!snapshot) {
@@ -71,6 +75,7 @@ export async function getCurrentUserLevelProgressView(): Promise<UserLevelProgre
       postCount: snapshot.postCount,
       commentCount: snapshot.commentCount,
       likeReceivedCount: snapshot.likeReceivedCount,
+      dailyReceivedLikeCount,
       checkInDays: snapshot.checkInDays,
       currentCheckInStreak: streakSummary.currentStreak,
       maxCheckInStreak: streakSummary.maxStreak,
@@ -87,6 +92,14 @@ export async function getCurrentUserLevelProgressView(): Promise<UserLevelProgre
         }
       : null,
   }
+}
+
+function getLocalDayRange(date = new Date()) {
+  const start = new Date(date)
+  start.setHours(0, 0, 0, 0)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+  return { start, end }
 }
 
 function buildCompletionItem(current: number, required: number) {

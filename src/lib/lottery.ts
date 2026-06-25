@@ -38,10 +38,10 @@ import { revalidateUserSurfaceCache } from "@/lib/user-surface"
 
 
 
-export type LotteryConditionTypeValue = "REPLY_CONTENT_LENGTH" | "REPLY_KEYWORD" | "LIKE_POST" | "FAVORITE_POST" | "REGISTER_DAYS" | "USER_LEVEL" | "VIP_LEVEL" | "USER_POINTS" | "USER_POST_COUNT" | "DAILY_POST_COUNT" | "DAILY_COMMENT_COUNT"
+export type LotteryConditionTypeValue = "REPLY_CONTENT_LENGTH" | "REPLY_KEYWORD" | "LIKE_POST" | "FAVORITE_POST" | "REGISTER_DAYS" | "USER_LEVEL" | "VIP_LEVEL" | "USER_POINTS" | "USER_POST_COUNT" | "DAILY_POST_COUNT" | "DAILY_COMMENT_COUNT" | "DAILY_RECEIVED_LIKE_COUNT"
 export type LotteryConditionOperatorValue = "GTE" | "EQ"
 
-const SUPPORTED_LOTTERY_CONDITION_TYPES = new Set<LotteryConditionTypeValue>(["REPLY_CONTENT_LENGTH", "REPLY_KEYWORD", "LIKE_POST", "FAVORITE_POST", "REGISTER_DAYS", "USER_LEVEL", "VIP_LEVEL", "USER_POINTS", "USER_POST_COUNT", "DAILY_POST_COUNT", "DAILY_COMMENT_COUNT"])
+const SUPPORTED_LOTTERY_CONDITION_TYPES = new Set<LotteryConditionTypeValue>(["REPLY_CONTENT_LENGTH", "REPLY_KEYWORD", "LIKE_POST", "FAVORITE_POST", "REGISTER_DAYS", "USER_LEVEL", "VIP_LEVEL", "USER_POINTS", "USER_POST_COUNT", "DAILY_POST_COUNT", "DAILY_COMMENT_COUNT", "DAILY_RECEIVED_LIKE_COUNT"])
 const SUPPORTED_LOTTERY_CONDITION_OPERATORS = new Set<LotteryConditionOperatorValue>(["GTE", "EQ"])
 
 export interface LotteryConditionInput {
@@ -223,6 +223,8 @@ function buildConditionDescription(type: LotteryConditionTypeValue, operator: Lo
       return `\u4eca\u65e5\u53d1\u5e16\u6570\u81f3\u5c11 ${value}`
     case "DAILY_COMMENT_COUNT":
       return `\u4eca\u65e5\u56de\u5e16\u6570\u81f3\u5c11 ${value}`
+    case "DAILY_RECEIVED_LIKE_COUNT":
+      return `\u4eca\u65e5\u83b7\u8d5e\u6570\u81f3\u5c11 ${value}`
     default:
       return `${type} ${operator} ${value}`
   }
@@ -480,6 +482,32 @@ async function evaluateSingleCondition(input: {
             gte: start,
             lt: end,
           },
+        },
+      })
+      return compareLotteryConditionValue(count, condition.operator, Number(condition.value))
+    }
+    case "DAILY_RECEIVED_LIKE_COUNT": {
+      const { start, end } = getLocalDayRange()
+      const count = await prisma.like.count({
+        where: {
+          createdAt: {
+            gte: start,
+            lt: end,
+          },
+          OR: [
+            {
+              targetType: "POST",
+              post: {
+                authorId: user.id,
+              },
+            },
+            {
+              targetType: "COMMENT",
+              comment: {
+                userId: user.id,
+              },
+            },
+          ],
         },
       })
       return compareLotteryConditionValue(count, condition.operator, Number(condition.value))

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
-import { ArrowRight, CheckCircle2, Crown, Flame, Heart, MessageSquareText, Sparkles } from "lucide-react"
+import { ArrowRight, CheckCircle2, Crown, Flame, Heart, MessageSquareText, Sparkles, ThumbsUp } from "lucide-react"
 
 import { LevelBadge } from "@/components/level-badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -52,7 +52,13 @@ export function LevelSettingsSection({ data }: { data: SettingsPageData }) {
         <StatCard title="累计签到" value={levelView.snapshot.checkInDays} hint="已完成签到天数" icon={<CheckCircle2 className="h-4 w-4" />} />
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid gap-4 md:grid-cols-3">
+        <StatCard
+          title="\u4eca\u65e5\u83b7\u8d5e"
+          value={levelView.snapshot.dailyReceivedLikeCount}
+          hint="\u4eca\u5929\u5e16\u5b50\u548c\u56de\u590d\u6536\u5230\u7684\u70b9\u8d5e"
+          icon={<ThumbsUp className="h-4 w-4" />}
+        />
         <StatCard
           title="当前连续签到"
           value={levelView.snapshot.currentCheckInStreak}

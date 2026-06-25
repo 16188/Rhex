@@ -169,6 +169,31 @@ export function countUserCommentLikes(userId: number) {
   })
 }
 
+export function countUserDailyReceivedLikes(userId: number, range: { start: Date; end: Date }) {
+  return prisma.like.count({
+    where: {
+      createdAt: {
+        gte: range.start,
+        lt: range.end,
+      },
+      OR: [
+        {
+          targetType: "POST",
+          post: {
+            authorId: userId,
+          },
+        },
+        {
+          targetType: "COMMENT",
+          comment: {
+            userId,
+          },
+        },
+      ],
+    },
+  })
+}
+
 export async function syncUserReceivedLikesInTransaction(userId: number, postLikes: number, commentLikes: number) {
   const totalLikes = postLikes + commentLikes
 
