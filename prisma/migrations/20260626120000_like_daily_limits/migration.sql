@@ -1,0 +1,3 @@
+ALTER TABLE "SiteSetting"
+  ADD COLUMN "likeDailyFreeLimit" INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN "likeExtraCostPoints" INTEGER NOT NULL DEFAULT 0;

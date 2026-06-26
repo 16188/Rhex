@@ -71,6 +71,8 @@ export interface SiteSettingsContentRecordData {
   postEditableMinutes: number
   commentEditableMinutes: number
   godCommentAutoLikeThreshold: number
+  likeDailyFreeLimit: number
+  likeExtraCostPoints: number
   tippingEnabled: boolean
   tippingDailyLimit: number
   tippingPerPostLimit: number

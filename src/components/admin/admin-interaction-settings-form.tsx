@@ -145,6 +145,8 @@ export function AdminInteractionSettingsForm({
             <TextField label="楼中楼默认展开条数" value={draft.commentInitialVisibleReplies} onChange={(value) => updateDraftField("commentInitialVisibleReplies", value)} placeholder="如 10" />
             <TextField label="评论区一页显示数" value={draft.commentPageSize} onChange={(value) => updateDraftField("commentPageSize", value)} placeholder="如 15" />
             <TextField label="评论点赞自动神评阈值" value={draft.godCommentAutoLikeThreshold} onChange={(value) => updateDraftField("godCommentAutoLikeThreshold", value)} placeholder="如 10" />
+            <TextField label="每日免费点赞次数" value={draft.likeDailyFreeLimit} onChange={(value) => updateDraftField("likeDailyFreeLimit", value)} placeholder="0 表示不限制" />
+            <TextField label="超出后每次点赞价格" value={draft.likeExtraCostPoints} onChange={(value) => updateDraftField("likeExtraCostPoints", value)} placeholder="0 表示不收费" />
             <SelectField
               label="评论加载方式"
               value={draft.commentLoadMode}

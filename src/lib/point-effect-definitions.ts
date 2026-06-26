@@ -14,6 +14,7 @@ export const POINT_EFFECT_SCOPE_OPTIONS = [
   { value: "TIP_INCOMING", label: "被打赏收入", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: true, badgeEffectRuntimeMatchable: true },
   { value: "GIFT_OUTGOING", label: "礼物支出", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: false, badgeEffectRuntimeMatchable: false },
   { value: "GIFT_INCOMING", label: "收到礼物收入", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: true, badgeEffectRuntimeMatchable: true },
+  { value: "LIKE_EXTRA_COST", label: "点赞付费", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: false, badgeEffectRuntimeMatchable: false },
   { value: "RED_PACKET_PUBLISH", label: "发布红包", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: false, badgeEffectRuntimeMatchable: false },
   { value: "RED_PACKET_RANDOM_CLAIM_PROBABILITY", label: "红包随机领取概率", targetTypes: [PointEffectTargetType.PROBABILITY], badgeEffectEnabled: true, badgeEffectRuntimeMatchable: true },
   { value: "RED_PACKET_CLAIM", label: "领取红包", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: true, badgeEffectRuntimeMatchable: true },

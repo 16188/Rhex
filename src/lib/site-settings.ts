@@ -134,6 +134,12 @@ function normalizeLegacyServerSiteSettings(data: ServerSiteSettingsData): Server
     godCommentAutoLikeThreshold: typeof data.godCommentAutoLikeThreshold === "number" && Number.isFinite(data.godCommentAutoLikeThreshold)
       ? Math.max(1, Math.floor(data.godCommentAutoLikeThreshold))
       : defaults.godCommentAutoLikeThreshold,
+    likeDailyFreeLimit: typeof data.likeDailyFreeLimit === "number" && Number.isFinite(data.likeDailyFreeLimit)
+      ? Math.max(0, Math.floor(data.likeDailyFreeLimit))
+      : defaults.likeDailyFreeLimit,
+    likeExtraCostPoints: typeof data.likeExtraCostPoints === "number" && Number.isFinite(data.likeExtraCostPoints)
+      ? Math.max(0, Math.floor(data.likeExtraCostPoints))
+      : defaults.likeExtraCostPoints,
   }
 }
 
@@ -531,6 +537,8 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     postEditableMinutes: normalizePostEditableMinutes(record.postEditableMinutes, 10),
     commentEditableMinutes: normalizePositiveInteger(record.commentEditableMinutes, 5),
     godCommentAutoLikeThreshold: normalizePositiveInteger(record.godCommentAutoLikeThreshold, DEFAULT_GOD_COMMENT_AUTO_LIKE_THRESHOLD),
+    likeDailyFreeLimit: Math.max(0, Math.floor(record.likeDailyFreeLimit ?? 0)),
+    likeExtraCostPoints: Math.max(0, Math.floor(record.likeExtraCostPoints ?? 0)),
     guestCanViewComments: commentAccessSettings.guestCanView,
     commentInitialVisibleReplies: commentAccessSettings.initialVisibleReplies,
     mentionRecommendations: mentionRecommendationSettings,

@@ -49,6 +49,8 @@ export const defaultSiteSettingsCreateInput = {
   postEditableMinutes: 10,
   commentEditableMinutes: 5,
   godCommentAutoLikeThreshold: DEFAULT_GOD_COMMENT_AUTO_LIKE_THRESHOLD,
+  likeDailyFreeLimit: 0,
+  likeExtraCostPoints: 0,
   tippingEnabled: false,
   tippingDailyLimit: 3,
   tippingPerPostLimit: 1,

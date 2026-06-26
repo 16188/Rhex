@@ -52,6 +52,8 @@ export async function updateInteractionSiteSettingsSection(existing: SiteSetting
     const postEditableMinutes = normalizePostEditableMinutes(readOptionalNumberField(body, "postEditableMinutes"), existing.postEditableMinutes)
     const commentEditableMinutes = Math.max(0, readOptionalNumberField(body, "commentEditableMinutes") ?? existing.commentEditableMinutes)
     const godCommentAutoLikeThreshold = Math.max(1, readOptionalNumberField(body, "godCommentAutoLikeThreshold") ?? existing.godCommentAutoLikeThreshold)
+    const likeDailyFreeLimit = Math.max(0, readOptionalNumberField(body, "likeDailyFreeLimit") ?? existing.likeDailyFreeLimit)
+    const likeExtraCostPoints = Math.max(0, readOptionalNumberField(body, "likeExtraCostPoints") ?? existing.likeExtraCostPoints)
     const existingAnonymousPostSettings = resolveAnonymousPostSettings({
       appStateJson: existing.appStateJson,
       enabledFallback: false,
@@ -298,6 +300,8 @@ export async function updateInteractionSiteSettingsSection(existing: SiteSetting
       postEditableMinutes,
       commentEditableMinutes,
       godCommentAutoLikeThreshold,
+      likeDailyFreeLimit,
+      likeExtraCostPoints,
       postRedPacketEnabled,
       postRedPacketMaxPoints,
       postRedPacketDailyLimit,

@@ -7,6 +7,7 @@ import { revalidateContentListCaches } from "@/lib/content-list-cache"
 import { maybePromoteGodCommentByLikes } from "@/lib/god-comments"
 import { handlePostLikeSideEffects } from "@/lib/interaction-side-effects"
 import { buildLikeTaskEventDescriptors } from "@/lib/like-task-events"
+import { apiError } from "@/lib/api-route"
 import { enqueueSyncUserReceivedLikes } from "@/lib/level-system"
 import { enqueueNotification } from "@/lib/notification-writes"
 import { revalidatePostCommentCache, revalidatePostDataCache, revalidatePostViewerCache } from "@/lib/post-detail-cache"
@@ -202,10 +203,14 @@ export async function executePostLikeToggle(input: {
   return runLikeWriteGuard("posts-like", {
     postId: input.postId,
   }, input.actor.id, input.request, async () => {
+    const settings = await getSiteSettings()
     const result = await togglePostLike({
       userId: input.actor.id,
       postId: input.postId,
       senderName: input.actor.nickname ?? input.actor.username,
+      dailyFreeLimit: settings.likeDailyFreeLimit,
+      extraCostPoints: settings.likeExtraCostPoints,
+      pointName: settings.pointName,
     })
 
     await applyPostLikeMutationEffects({
@@ -247,10 +252,14 @@ export async function executeCommentLikeToggle(input: {
   return runLikeWriteGuard("comments-like", {
     commentId: input.commentId,
   }, input.actor.id, input.request, async () => {
+    const settings = await getSiteSettings()
     const result = await toggleCommentLike({
       userId: input.actor.id,
       commentId: input.commentId,
       senderName: input.actor.nickname ?? input.actor.username,
+      dailyFreeLimit: settings.likeDailyFreeLimit,
+      extraCostPoints: settings.likeExtraCostPoints,
+      pointName: settings.pointName,
     })
 
     await applyCommentLikeMutationEffects({
@@ -341,10 +350,18 @@ export async function ensurePostLiked(input: {
       }
     }
 
+    if (post.authorId === input.actor.id) {
+      apiError(400, "不能给自己点赞")
+    }
+
+    const settings = await getSiteSettings()
     const result = await togglePostLike({
       userId: input.actor.id,
       postId: input.postId,
       senderName: input.actor.nickname ?? input.actor.username,
+      dailyFreeLimit: settings.likeDailyFreeLimit,
+      extraCostPoints: settings.likeExtraCostPoints,
+      pointName: settings.pointName,
     })
 
     if (!result.liked) {
@@ -439,10 +456,18 @@ export async function ensureCommentLiked(input: {
       }
     }
 
+    if (comment.userId === input.actor.id) {
+      apiError(400, "不能给自己点赞")
+    }
+
+    const settings = await getSiteSettings()
     const result = await toggleCommentLike({
       userId: input.actor.id,
       commentId: input.commentId,
       senderName: input.actor.nickname ?? input.actor.username,
+      dailyFreeLimit: settings.likeDailyFreeLimit,
+      extraCostPoints: settings.likeExtraCostPoints,
+      pointName: settings.pointName,
     })
 
     if (!result.liked) {

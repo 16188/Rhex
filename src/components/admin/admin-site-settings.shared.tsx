@@ -71,6 +71,8 @@ export interface AdminBasicSettingsInitialSettings {
   postEditableMinutes: number
   commentEditableMinutes: number
   godCommentAutoLikeThreshold: number
+  likeDailyFreeLimit: number
+  likeExtraCostPoints: number
   guestCanViewComments: boolean
   commentInitialVisibleReplies: number
   mentionRecommendations: MentionRecommendationSettings
@@ -206,6 +208,8 @@ export interface AdminBasicSettingsDraft {
   postEditableMinutes: string
   commentEditableMinutes: string
   godCommentAutoLikeThreshold: string
+  likeDailyFreeLimit: string
+  likeExtraCostPoints: string
   guestCanViewComments: boolean
   commentInitialVisibleReplies: string
   mentionDefaultUsernames: string
@@ -446,6 +450,8 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     postEditableMinutes: coerceNumberString(initialSettings.postEditableMinutes, 10),
     commentEditableMinutes: coerceNumberString(initialSettings.commentEditableMinutes, 5),
     godCommentAutoLikeThreshold: coerceNumberString(initialSettings.godCommentAutoLikeThreshold, DEFAULT_GOD_COMMENT_AUTO_LIKE_THRESHOLD),
+    likeDailyFreeLimit: coerceNumberString(initialSettings.likeDailyFreeLimit, 0),
+    likeExtraCostPoints: coerceNumberString(initialSettings.likeExtraCostPoints, 0),
     guestCanViewComments: coerceBoolean(initialSettings.guestCanViewComments, true),
     commentInitialVisibleReplies: coerceNumberString(initialSettings.commentInitialVisibleReplies, 10),
     mentionDefaultUsernames: (initialSettings.mentionRecommendations?.defaultUsernames ?? []).join("\n"),
@@ -724,6 +730,8 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
     postEditableMinutes: Number(draft.postEditableMinutes),
     commentEditableMinutes: Number(draft.commentEditableMinutes),
     godCommentAutoLikeThreshold: Number(draft.godCommentAutoLikeThreshold),
+    likeDailyFreeLimit: Number(draft.likeDailyFreeLimit),
+    likeExtraCostPoints: Number(draft.likeExtraCostPoints),
     anonymousPostEnabled: draft.anonymousPostEnabled,
     anonymousPostPrice: Number(draft.anonymousPostPrice),
     anonymousPostDailyLimit: Number(draft.anonymousPostDailyLimit),

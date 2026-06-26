@@ -2,6 +2,8 @@
 
 ## 2026-06-26
 
+- Made reply-triggered post red packet and jackpot settlement run immediately after comment creation.
+- Added configurable daily free like limits with paid extra likes, and changed self-like attempts to show a clear "不能给自己点赞" message.
 - Blocked users from liking their own posts or comments and expanded the default Markdown emoji set.
 - Fixed the level center daily received likes card rendering escaped Unicode text instead of Chinese labels.
 - Added a lottery participation condition for daily received likes and displayed daily received likes on the level center.

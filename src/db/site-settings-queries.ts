@@ -43,6 +43,8 @@ export const siteSettingsSelect = {
   postEditableMinutes: true,
   commentEditableMinutes: true,
   godCommentAutoLikeThreshold: true,
+  likeDailyFreeLimit: true,
+  likeExtraCostPoints: true,
   tippingEnabled: true,
   tippingDailyLimit: true,
   tippingPerPostLimit: true,

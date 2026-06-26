@@ -5,6 +5,8 @@ export interface SiteSettingsContentData {
   postEditableMinutes: number
   commentEditableMinutes: number
   godCommentAutoLikeThreshold: number
+  likeDailyFreeLimit: number
+  likeExtraCostPoints: number
   guestCanViewComments: boolean
   commentInitialVisibleReplies: number
   mentionRecommendations: MentionRecommendationSettings

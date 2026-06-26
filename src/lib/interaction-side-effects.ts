@@ -70,14 +70,6 @@ registerInteractionEffectHooks({
     revalidatePostViewerCache(input.userId)
   },
   async onCommentCreate(input) {
-    await Promise.all([
-      swallowSideEffect(`comment-create:red-packet:${input.commentId}`, () => tryTriggerPostRewardPool({
-        postId: input.postId,
-        userId: input.userId,
-        triggerType: "REPLY",
-        triggerCommentId: input.commentId,
-      })),
-    ])
     revalidatePostCommentCache({ postId: input.postId })
     revalidatePostViewerCache(input.userId)
   },
@@ -120,6 +112,13 @@ export async function handleCommentCreateSideEffects(input: {
     postId: input.postId,
     userId: input.userId,
     replyCommentId: input.commentId,
+  }))
+
+  await swallowSideEffect(`comment-create:red-packet:${input.commentId}`, () => tryTriggerPostRewardPool({
+    postId: input.postId,
+    userId: input.userId,
+    triggerType: "REPLY",
+    triggerCommentId: input.commentId,
   }))
 
   void enqueueCommentCreateEffects({
