@@ -24,6 +24,7 @@ export async function toggleCommentLike(params: {
   })
 
   const targetUserId = comment?.userId ?? null
+  const isSelfLike = Boolean(comment && comment.userId === params.userId)
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -51,6 +52,17 @@ export async function toggleCommentLike(params: {
   } catch (error) {
     if (!isPrismaKnownError(error, "P2025")) {
       throw error
+    }
+  }
+
+  if (isSelfLike) {
+    return {
+      liked: false,
+      postId: comment?.postId ?? null,
+      targetUserId,
+      notificationTargetUserId: null,
+      commentPreview: comment?.content.slice(0, 80) ?? "",
+      likeCount: comment?.likeCount ?? 0,
     }
   }
 
@@ -110,6 +122,7 @@ export async function togglePostLike(params: {
   })
 
   const targetUserId = post?.authorId ?? null
+  const isSelfLike = Boolean(post && post.authorId === params.userId)
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -135,6 +148,15 @@ export async function togglePostLike(params: {
   } catch (error) {
     if (!isPrismaKnownError(error, "P2025")) {
       throw error
+    }
+  }
+
+  if (isSelfLike) {
+    return {
+      liked: false,
+      targetUserId,
+      notificationTargetUserId: null,
+      postTitle: post?.title ?? "",
     }
   }
 

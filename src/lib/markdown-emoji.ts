@@ -17,11 +17,34 @@ export const DEFAULT_MARKDOWN_EMOJI_GROUP = "默认"
 
 export const DEFAULT_MARKDOWN_EMOJI_ITEMS: MarkdownEmojiItem[] = [
   { shortcode: "smile", label: "微笑", icon: "😀", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "grin", label: "露齿笑", icon: "😁", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "joy", label: "笑哭", icon: "😂", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "wink", label: "眨眼", icon: "😉", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "cool", label: "酷", icon: "😎", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "thinking", label: "思考", icon: "🤔", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "cry", label: "哭", icon: "😢", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "angry", label: "生气", icon: "😡", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
   { shortcode: "heart", label: "爱心", icon: "❤️", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "broken_heart", label: "心碎", icon: "💔", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "thumbs_up", label: "赞", icon: "👍", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "thumbs_down", label: "踩", icon: "👎", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "clap", label: "鼓掌", icon: "👏", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "pray", label: "感谢", icon: "🙏", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "ok", label: "可以", icon: "👌", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "muscle", label: "加油", icon: "💪", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
   { shortcode: "rocket", label: "火箭", icon: "🚀", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
   { shortcode: "fire", label: "火焰", icon: "🔥", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
   { shortcode: "sparkles", label: "闪光", icon: "✨", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
-
+  { shortcode: "star", label: "星星", icon: "⭐", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "party", label: "庆祝", icon: "🥳", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "trophy", label: "奖杯", icon: "🏆", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "gift", label: "礼物", icon: "🎁", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "eyes", label: "围观", icon: "👀", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "bulb", label: "灵感", icon: "💡", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "coffee", label: "咖啡", icon: "☕", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "check", label: "通过", icon: "✅", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "warning", label: "注意", icon: "⚠️", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
+  { shortcode: "question", label: "疑问", icon: "❓", group: DEFAULT_MARKDOWN_EMOJI_GROUP },
 ]
 
 function normalizeShortcode(value: string) {
@@ -135,7 +158,10 @@ export function parseMarkdownEmojiMapJson(raw: string | null | undefined) {
   }
 
   try {
-    return normalizeMarkdownEmojiItems(JSON.parse(raw))
+    const items = normalizeMarkdownEmojiItems(JSON.parse(raw))
+    const seen = new Set(items.map((item) => item.shortcode))
+    const missingDefaults = DEFAULT_MARKDOWN_EMOJI_ITEMS.filter((item) => !seen.has(item.shortcode))
+    return [...items, ...missingDefaults]
   } catch {
     return DEFAULT_MARKDOWN_EMOJI_ITEMS
   }

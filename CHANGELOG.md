@@ -2,6 +2,7 @@
 
 ## 2026-06-26
 
+- Blocked users from liking their own posts or comments and expanded the default Markdown emoji set.
 - Fixed the level center daily received likes card rendering escaped Unicode text instead of Chinese labels.
 - Added a lottery participation condition for daily received likes and displayed daily received likes on the level center.
 

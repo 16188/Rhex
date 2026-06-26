@@ -3,6 +3,7 @@ import { DEFAULT_SITE_HEADER_APP_LINKS } from "@/lib/site-header-app-links"
 import { DEFAULT_MESSAGE_PROMPT_AUDIO_PATH } from "@/lib/message-prompt-audio"
 import { DEFAULT_GOD_COMMENT_AUTO_LIKE_THRESHOLD } from "@/lib/god-comment-settings"
 import { DEFAULT_EDITOR_TOOLBAR_ORDER } from "@/lib/editor-toolbar-settings"
+import { DEFAULT_MARKDOWN_EMOJI_ITEMS } from "@/lib/markdown-emoji"
 
 const defaultFooterCopyrightText = `Rhex 论坛系统 ${new Date().getFullYear()}`
 
@@ -93,13 +94,7 @@ export const defaultSiteSettingsCreateInput = {
   uploadAllowedImageTypes: "jpg,jpeg,png,gif,webp",
   uploadMaxFileSizeMb: 5,
   uploadAvatarMaxFileSizeMb: 2,
-  markdownEmojiMapJson: JSON.stringify([
-    { shortcode: "smile", label: "微笑", icon: "😀", group: "默认" },
-    { shortcode: "heart", label: "爱心", icon: "❤️", group: "默认" },
-    { shortcode: "rocket", label: "火箭", icon: "🚀", group: "默认" },
-    { shortcode: "fire", label: "火焰", icon: "🔥", group: "默认" },
-    { shortcode: "sparkles", label: "闪光", icon: "✨", group: "默认" },
-  ]),
+  markdownEmojiMapJson: JSON.stringify(DEFAULT_MARKDOWN_EMOJI_ITEMS),
   headerAppLinksJson: JSON.stringify(DEFAULT_SITE_HEADER_APP_LINKS),
   headerAppIconName: "grid",
   appStateJson: JSON.stringify({
