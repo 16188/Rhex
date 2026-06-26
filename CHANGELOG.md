@@ -2,7 +2,7 @@
 
 ## 2026-06-26
 
-- Improved analytics script injection compatibility by preserving custom script attributes such as `data-site-id` and mounting scripts in the footer analytics hook.
+- Improved analytics script compatibility for Rybbit by preserving custom script attributes such as `data-site-id` and loading external analytics scripts through Next.js Script.
 - Added a confirmation prompt before paid extra likes are charged after the daily free like quota is used.
 - Made reply-triggered post red packet and jackpot settlement run immediately after comment creation.
 - Added configurable daily free like limits with paid extra likes, and changed self-like attempts to show a clear "不能给自己点赞" message.

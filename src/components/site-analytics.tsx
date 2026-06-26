@@ -1,104 +1,80 @@
 "use client"
 
-import { useEffect } from "react"
+import Script from "next/script"
 
-import { getScriptAttribute, parseSiteAnalyticsCode } from "@/lib/site-analytics"
+import { parseSiteAnalyticsCode, type SiteAnalyticsScriptAttribute } from "@/lib/site-analytics"
 
 const SITE_ANALYTICS_HOOK_ID = "site-analytics-hook"
+
+const SCRIPT_PROP_NAME_MAP: Record<string, string> = {
+  crossorigin: "crossOrigin",
+  fetchpriority: "fetchPriority",
+  nomodule: "noModule",
+  referrerpolicy: "referrerPolicy",
+  charset: "charSet",
+}
 
 const EMPTY_ANALYTICS_CODE = {
   html: "",
   scripts: [],
 }
 
-function isExecutableInlineScript(type: string | undefined) {
-  if (!type) {
-    return true
+function buildScriptProps(attributes: SiteAnalyticsScriptAttribute[]) {
+  const props: Record<string, string | boolean> = {}
+
+  for (const { name, value } of attributes) {
+    const normalizedName = SCRIPT_PROP_NAME_MAP[name.toLowerCase()] ?? name
+    props[normalizedName] = value
   }
 
-  const normalizedType = type.trim().toLowerCase()
+  return props
+}
 
-  return normalizedType === ""
-    || normalizedType === "text/javascript"
-    || normalizedType === "application/javascript"
+function getScriptId(attributes: SiteAnalyticsScriptAttribute[], index: number) {
+  const idAttribute = attributes.find((attribute) => attribute.name.toLowerCase() === "id")
+  return typeof idAttribute?.value === "string" && idAttribute.value.trim()
+    ? idAttribute.value.trim()
+    : `site-analytics-script-${index}`
 }
 
 export function SiteAnalytics({ code }: { code?: string | null }) {
   const normalizedCode = code?.trim() ?? ""
-  const { html } = normalizedCode
+  const { html, scripts } = normalizedCode
     ? parseSiteAnalyticsCode(normalizedCode)
     : EMPTY_ANALYTICS_CODE
   const hookProps = html
     ? { dangerouslySetInnerHTML: { __html: html } }
     : {}
 
-  useEffect(() => {
-    if (!normalizedCode) {
-      return
-    }
-
-    const hook = document.getElementById(SITE_ANALYTICS_HOOK_ID)
-
-    if (!hook) {
-      return
-    }
-
-    const { scripts } = parseSiteAnalyticsCode(normalizedCode)
-
-    if (scripts.length === 0) {
-      return
-    }
-
-    const injectedScripts: HTMLScriptElement[] = []
-
-    for (const [index, script] of scripts.entries()) {
-      const rawSrc = getScriptAttribute(script.attributes, "src")
-      const rawType = getScriptAttribute(script.attributes, "type")
-      const src = typeof rawSrc === "string" ? rawSrc : ""
-      const type = typeof rawType === "string" ? rawType : undefined
-
-      if (!src && isExecutableInlineScript(type) && script.content.trim().length > 0) {
-        window.eval(script.content)
-        continue
-      }
-
-      const element = document.createElement("script")
-
-      for (const { name, value } of script.attributes) {
-        if (value === undefined || value === null || value === false) {
-          continue
-        }
-
-        if (value === true) {
-          element.setAttribute(name, "")
-          continue
-        }
-
-        element.setAttribute(name, String(value))
-      }
-
-      if (!element.id) {
-        element.id = `site-analytics-script-${index}`
-      }
-
-      if (!element.src && script.content.trim().length > 0) {
-        element.text = script.content
-      }
-
-      hook.appendChild(element)
-      injectedScripts.push(element)
-    }
-
-    return () => {
-      for (const script of injectedScripts) {
-        script.remove()
-      }
-    }
-  }, [normalizedCode])
-
   return (
     <>
       <div id={SITE_ANALYTICS_HOOK_ID} data-hook="site-analytics" {...hookProps} />
+      {scripts.map((script, index) => {
+        const props = buildScriptProps(script.attributes)
+        const id = getScriptId(script.attributes, index)
+        const content = script.content.trim()
+
+        if (content) {
+          return (
+            <Script
+              key={id}
+              id={id}
+              strategy="afterInteractive"
+              {...props}
+              dangerouslySetInnerHTML={{ __html: script.content }}
+            />
+          )
+        }
+
+        return (
+          <Script
+            key={id}
+            id={id}
+            strategy="afterInteractive"
+            {...props}
+          />
+        )
+      })}
     </>
   )
 }
