@@ -11,6 +11,21 @@ interface CommentLikeButtonProps {
   initialLiked?: boolean
 }
 
+async function postCommentLike(commentId: string, confirmPaidLike = false) {
+  const response = await fetch("/api/comments/like", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ commentId, ...(confirmPaidLike ? { confirmPaidLike: true } : {}) }),
+  })
+  const result = await response.json()
+
+  if (response.status === 409 && typeof result.message === "string" && window.confirm(result.message)) {
+    return postCommentLike(commentId, true)
+  }
+
+  return { response, result }
+}
+
 export function CommentLikeButton({ commentId, initialCount, initialLiked = false }: CommentLikeButtonProps) {
   const [count, setCount] = useState(initialCount)
   const [liked, setLiked] = useState(initialLiked)
@@ -26,12 +41,7 @@ export function CommentLikeButton({ commentId, initialCount, initialLiked = fals
         className={liked ? "inline-flex items-center gap-1 text-primary" : "inline-flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"}
         onClick={() => {
           startTransition(async () => {
-            const response = await fetch("/api/comments/like", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ commentId }),
-            })
-            const result = await response.json()
+            const { response, result } = await postCommentLike(commentId)
             if (!response.ok) {
               toast.error(result.message ?? "点赞失败", "评论点赞失败")
               return

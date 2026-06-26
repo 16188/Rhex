@@ -84,6 +84,18 @@ async function chargeExtraLikeCost(input: {
   })
 }
 
+function requirePaidLikeConfirmation(input: {
+  costPoints: number
+  pointName: string
+  confirmed?: boolean
+}) {
+  if (input.costPoints <= 0 || input.confirmed) {
+    return
+  }
+
+  apiError(409, `当天免费点赞次数已用完，你确认要花${input.costPoints}${input.pointName}点赞吗`)
+}
+
 export async function toggleCommentLike(params: {
   userId: number
   commentId: string
@@ -91,6 +103,7 @@ export async function toggleCommentLike(params: {
   dailyFreeLimit?: number
   extraCostPoints?: number
   pointName?: string
+  confirmPaidLike?: boolean
 }) {
   const comment = await prisma.comment.findUnique({
     where: { id: params.commentId },
@@ -142,11 +155,17 @@ export async function toggleCommentLike(params: {
   let nextLikeCount = comment?.likeCount ?? 0
 
   await prisma.$transaction(async (tx) => {
+    const pointName = params.pointName ?? "积分"
     const costPoints = await resolveExtraLikeCost({
       tx,
       userId: params.userId,
       dailyFreeLimit: normalizeNonNegativeInteger(params.dailyFreeLimit),
       extraCostPoints: normalizeNonNegativeInteger(params.extraCostPoints),
+    })
+    requirePaidLikeConfirmation({
+      costPoints,
+      pointName,
+      confirmed: params.confirmPaidLike,
     })
 
     try {
@@ -170,7 +189,7 @@ export async function toggleCommentLike(params: {
       tx,
       userId: params.userId,
       costPoints,
-      pointName: params.pointName ?? "积分",
+      pointName,
       targetType: TargetType.COMMENT,
       targetId: params.commentId,
     })
@@ -203,6 +222,7 @@ export async function togglePostLike(params: {
   dailyFreeLimit?: number
   extraCostPoints?: number
   pointName?: string
+  confirmPaidLike?: boolean
 }) {
   const post = await prisma.post.findUnique({
     where: { id: params.postId },
@@ -248,11 +268,17 @@ export async function togglePostLike(params: {
   }
 
   await prisma.$transaction(async (tx) => {
+    const pointName = params.pointName ?? "积分"
     const costPoints = await resolveExtraLikeCost({
       tx,
       userId: params.userId,
       dailyFreeLimit: normalizeNonNegativeInteger(params.dailyFreeLimit),
       extraCostPoints: normalizeNonNegativeInteger(params.extraCostPoints),
+    })
+    requirePaidLikeConfirmation({
+      costPoints,
+      pointName,
+      confirmed: params.confirmPaidLike,
     })
 
     try {
@@ -276,7 +302,7 @@ export async function togglePostLike(params: {
       tx,
       userId: params.userId,
       costPoints,
-      pointName: params.pointName ?? "积分",
+      pointName,
       targetType: TargetType.POST,
       targetId: params.postId,
     })

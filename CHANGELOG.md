@@ -2,6 +2,7 @@
 
 ## 2026-06-26
 
+- Added a confirmation prompt before paid extra likes are charged after the daily free like quota is used.
 - Made reply-triggered post red packet and jackpot settlement run immediately after comment creation.
 - Added configurable daily free like limits with paid extra likes, and changed self-like attempts to show a clear "不能给自己点赞" message.
 - Blocked users from liking their own posts or comments and expanded the default Markdown emoji set.

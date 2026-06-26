@@ -5,6 +5,7 @@ import { executeCommentLikeToggle } from "@/lib/interaction-like-execution"
 export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
   const body = await readJsonBody(request)
   const commentId = requireStringField(body, "commentId", "缺少评论参数")
+  const confirmPaidLike = Boolean(body.confirmPaidLike)
 
   const requestUrl = new URL(request.url)
   await executeAddonActionHook("comment.like.before", {
@@ -15,6 +16,7 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
   const result = await executeCommentLikeToggle({
     actor: currentUser,
     commentId,
+    confirmPaidLike,
     request,
   })
 

@@ -206,6 +206,24 @@ function IconActionButton({
   )
 }
 
+async function postStreamAction(url: string, body: Record<string, unknown>) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  const result = await response.json()
+
+  if (response.status === 409 && typeof result.message === "string" && window.confirm(result.message)) {
+    return postStreamAction(url, {
+      ...body,
+      confirmPaidLike: true,
+    })
+  }
+
+  return { response, result }
+}
+
 function PostNoteActions({ item, postPath }: { item: PostStreamDisplayItem; postPath: string }) {
   const [likes, setLikes] = useState(item.likeCount ?? 0)
   const [favorites, setFavorites] = useState(item.favoriteCount ?? 0)
@@ -216,12 +234,7 @@ function PostNoteActions({ item, postPath }: { item: PostStreamDisplayItem; post
   function runAction(type: "like" | "favorite") {
     startTransition(async () => {
       try {
-        const response = await fetch(type === "like" ? "/api/posts/like" : "/api/posts/favorite", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postId: item.id }),
-        })
-        const result = await response.json()
+        const { response, result } = await postStreamAction(type === "like" ? "/api/posts/like" : "/api/posts/favorite", { postId: item.id })
 
         if (!response.ok) {
           toast.error(result.message ?? (type === "like" ? "点赞失败" : "收藏失败"), type === "like" ? "帖子点赞失败" : "收藏失败")

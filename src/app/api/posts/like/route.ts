@@ -5,6 +5,7 @@ import { executePostLikeToggle } from "@/lib/interaction-like-execution"
 export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
   const body = await readJsonBody(request)
   const postId = String(body.postId ?? "")
+  const confirmPaidLike = Boolean(body.confirmPaidLike)
 
   if (!postId) {
     apiError(400, "缺少帖子参数")
@@ -19,6 +20,7 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
   const result = await executePostLikeToggle({
     actor: currentUser,
     postId,
+    confirmPaidLike,
     request,
     log: {
       scope: "posts-like",

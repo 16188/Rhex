@@ -60,6 +60,23 @@ interface PostEngagementBarProps {
 
 const engagementToggleClassName = "h-auto min-w-0 rounded-full p-0 text-muted-foreground hover:bg-transparent hover:text-foreground aria-pressed:bg-transparent aria-pressed:text-foreground data-[state=on]:bg-transparent data-[state=on]:text-foreground"
 
+async function postJson(url: string, body: Record<string, unknown>) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  })
+  const result = await response.json()
+
+  if (response.status === 409 && typeof result.message === "string" && window.confirm(result.message)) {
+    return postJson(url, {
+      ...body,
+      confirmPaidLike: true,
+    })
+  }
+
+  return { response, result }
+}
 
 export function PostEngagementBar({ postId, postSlug, author, likeCount, favoriteCount = 0, initialLiked = false, initialFavored = false, canReport = false, reportLabel = "当前帖子", redPacket, tipping }: PostEngagementBarProps) {
 
@@ -74,12 +91,7 @@ export function PostEngagementBar({ postId, postSlug, author, likeCount, favorit
   function runAction(type: "like" | "favorite") {
     startTransition(async () => {
       try {
-        const response = await fetch(type === "like" ? "/api/posts/like" : "/api/posts/favorite", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ postId }),
-        })
-        const result = await response.json()
+        const { response, result } = await postJson(type === "like" ? "/api/posts/like" : "/api/posts/favorite", { postId })
 
         if (!response.ok) {
           toast.error(

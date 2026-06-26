@@ -195,6 +195,7 @@ async function applyCommentLikeMutationEffects(input: {
 export async function executePostLikeToggle(input: {
   actor: LikeExecutionActor
   postId: string
+  confirmPaidLike?: boolean
   request?: Request
   log?: InteractionExecutionLogOptions
 }) {
@@ -211,6 +212,7 @@ export async function executePostLikeToggle(input: {
       dailyFreeLimit: settings.likeDailyFreeLimit,
       extraCostPoints: settings.likeExtraCostPoints,
       pointName: settings.pointName,
+      confirmPaidLike: input.confirmPaidLike,
     })
 
     await applyPostLikeMutationEffects({
@@ -244,6 +246,7 @@ export async function executePostLikeToggle(input: {
 export async function executeCommentLikeToggle(input: {
   actor: LikeExecutionActor
   commentId: string
+  confirmPaidLike?: boolean
   request?: Request
   log?: InteractionExecutionLogOptions
 }) {
@@ -260,6 +263,7 @@ export async function executeCommentLikeToggle(input: {
       dailyFreeLimit: settings.likeDailyFreeLimit,
       extraCostPoints: settings.likeExtraCostPoints,
       pointName: settings.pointName,
+      confirmPaidLike: input.confirmPaidLike,
     })
 
     await applyCommentLikeMutationEffects({
