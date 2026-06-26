@@ -2,17 +2,9 @@
 
 import { useEffect } from "react"
 
-import { parseSiteAnalyticsCode } from "@/lib/site-analytics"
+import { getScriptAttribute, parseSiteAnalyticsCode } from "@/lib/site-analytics"
 
 const SITE_ANALYTICS_HOOK_ID = "site-analytics-hook"
-
-const SCRIPT_PROP_ATTRIBUTE_MAP: Record<string, string> = {
-  crossOrigin: "crossorigin",
-  referrerPolicy: "referrerpolicy",
-  noModule: "nomodule",
-  fetchPriority: "fetchpriority",
-  charSet: "charset",
-}
 
 const EMPTY_ANALYTICS_CODE = {
   html: "",
@@ -60,8 +52,10 @@ export function SiteAnalytics({ code }: { code?: string | null }) {
     const injectedScripts: HTMLScriptElement[] = []
 
     for (const [index, script] of scripts.entries()) {
-      const src = typeof script.props.src === "string" ? script.props.src : ""
-      const type = typeof script.props.type === "string" ? script.props.type : undefined
+      const rawSrc = getScriptAttribute(script.attributes, "src")
+      const rawType = getScriptAttribute(script.attributes, "type")
+      const src = typeof rawSrc === "string" ? rawSrc : ""
+      const type = typeof rawType === "string" ? rawType : undefined
 
       if (!src && isExecutableInlineScript(type) && script.content.trim().length > 0) {
         window.eval(script.content)
@@ -70,19 +64,17 @@ export function SiteAnalytics({ code }: { code?: string | null }) {
 
       const element = document.createElement("script")
 
-      for (const [name, value] of Object.entries(script.props)) {
+      for (const { name, value } of script.attributes) {
         if (value === undefined || value === null || value === false) {
           continue
         }
 
-        const attributeName = SCRIPT_PROP_ATTRIBUTE_MAP[name] ?? name.toLowerCase()
-
         if (value === true) {
-          element.setAttribute(attributeName, "")
+          element.setAttribute(name, "")
           continue
         }
 
-        element.setAttribute(attributeName, String(value))
+        element.setAttribute(name, String(value))
       }
 
       if (!element.id) {
@@ -93,7 +85,7 @@ export function SiteAnalytics({ code }: { code?: string | null }) {
         element.text = script.content
       }
 
-      document.head.appendChild(element)
+      hook.appendChild(element)
       injectedScripts.push(element)
     }
 

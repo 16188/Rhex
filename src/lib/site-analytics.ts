@@ -1,21 +1,14 @@
-import type { ScriptHTMLAttributes } from "react"
-
 const SCRIPT_TAG_PATTERN = /<script\b([^>]*?)(?:>([\s\S]*?)<\/script\s*>|\/\s*>)/gi
 const SCRIPT_ATTRIBUTE_PATTERN = /([^\s"'<>/=`]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g
 
-const SCRIPT_ATTRIBUTE_NAME_MAP: Record<string, string> = {
-  crossorigin: "crossOrigin",
-  fetchpriority: "fetchPriority",
-  nomodule: "noModule",
-  referrerpolicy: "referrerPolicy",
-  charset: "charSet",
+export interface SiteAnalyticsScriptAttribute {
+  name: string
+  value: string | true
 }
-
-type SiteAnalyticsScriptProps = Omit<ScriptHTMLAttributes<HTMLScriptElement>, "children" | "dangerouslySetInnerHTML">
 
 export interface SiteAnalyticsScriptDescriptor {
   content: string
-  props: SiteAnalyticsScriptProps
+  attributes: SiteAnalyticsScriptAttribute[]
 }
 
 export function parseSiteAnalyticsCode(input: string) {
@@ -32,14 +25,15 @@ export function parseSiteAnalyticsCode(input: string) {
 
     const attributes = match[1] ?? ""
     const content = match[2] ?? ""
-    const props = parseScriptAttributes(attributes)
-    const hasSrc = typeof props.src === "string" && props.src.length > 0
+    const parsedAttributes = parseScriptAttributes(attributes)
+    const src = getScriptAttribute(parsedAttributes, "src")
+    const hasSrc = typeof src === "string" && src.length > 0
     const hasContent = content.trim().length > 0
 
     if (hasSrc || hasContent) {
       scripts.push({
         content,
-        props,
+        attributes: parsedAttributes,
       })
     }
 
@@ -56,16 +50,23 @@ export function parseSiteAnalyticsCode(input: string) {
   }
 }
 
-function parseScriptAttributes(input: string): SiteAnalyticsScriptProps {
-  const scriptProps: Record<string, string | boolean> = {}
+function parseScriptAttributes(input: string): SiteAnalyticsScriptAttribute[] {
+  const attributes: SiteAnalyticsScriptAttribute[] = []
 
   for (const match of input.matchAll(SCRIPT_ATTRIBUTE_PATTERN)) {
     const rawName = match[1]
     const rawValue = match[2] ?? match[3] ?? match[4]
-    const normalizedName = SCRIPT_ATTRIBUTE_NAME_MAP[rawName.toLowerCase()] ?? rawName
 
-    scriptProps[normalizedName] = rawValue === undefined ? true : rawValue
+    attributes.push({
+      name: rawName,
+      value: rawValue === undefined ? true : rawValue,
+    })
   }
 
-  return scriptProps as SiteAnalyticsScriptProps
+  return attributes
+}
+
+export function getScriptAttribute(attributes: SiteAnalyticsScriptAttribute[], name: string) {
+  const normalizedName = name.toLowerCase()
+  return attributes.find((attribute) => attribute.name.toLowerCase() === normalizedName)?.value
 }
