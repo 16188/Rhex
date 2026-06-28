@@ -139,6 +139,12 @@ export default async function WritePage(props: PageProps<"/write">) {
   const isAdmin = user.role === "ADMIN"
   const canEditThisPost = Boolean(editingPost && (editingPost.authorId === user.id || isAdmin))
   const isStillEditable = Boolean(editingPost && isPostStillEditable(editingPost.createdAt, settings.postEditableMinutes)) || isAdmin
+  const canEditLotterySettings = Boolean(
+    isAdmin
+    && editingPost?.type === "LOTTERY"
+    && editingPost.lotteryStatus !== "DRAWN"
+    && editingPost.lotteryStatus !== "CANCELLED",
+  )
   const addonFormSlots = {
     addonFormBefore: <AddonSlotRenderer slot="post.create.form.before" />,
     addonFormAfter: <AddonSlotRenderer slot="post.create.form.after" />,
@@ -238,6 +244,7 @@ export default async function WritePage(props: PageProps<"/write">) {
                     pollOptions: editingPost.pollOptions.map((item) => item.content),
                     lotteryConfig: editingPost.type === "LOTTERY"
                       ? {
+                          editable: canEditLotterySettings,
                           startsAt: editingPost.lotteryStartsAt?.toISOString() ?? null,
                           endsAt: editingPost.lotteryEndsAt?.toISOString() ?? null,
                           participantGoal: editingPost.lotteryParticipantGoal,

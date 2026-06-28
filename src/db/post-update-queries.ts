@@ -11,9 +11,19 @@ export function findPostUpdateContext(postId: string) {
       authorId: true,
       isAnonymous: true,
       type: true,
+      lotteryStatus: true,
       content: true,
       createdAt: true,
       lastAppendedAt: true,
+      lotteryPrizes: {
+        select: {
+          type: true,
+          quantity: true,
+          pointsAmount: true,
+          vipPlan: true,
+          unitCostPoints: true,
+        },
+      },
       board: {
         select: {
           slug: true,

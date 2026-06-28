@@ -243,6 +243,7 @@ export interface CreatePostFormInitialValues {
   minViewVipLevel?: number | null
   tags?: string[]
   lotteryConfig?: {
+    editable?: boolean
     startsAt?: string | null
     endsAt?: string | null
     participantGoal?: number | null

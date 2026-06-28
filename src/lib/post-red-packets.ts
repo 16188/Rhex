@@ -20,6 +20,7 @@ import {
   updateJackpotStatus,
 } from "@/db/post-red-packet-queries"
 import { applyPointDelta, prepareScopedPointDelta, prepareScopedProbability } from "@/lib/point-center"
+import { POINT_LOG_EVENT_TYPES } from "@/lib/point-log-events"
 import { apiError } from "@/lib/api-route"
 import { getBusinessDayRange, formatRelativeTime } from "@/lib/formatters"
 import { buildJackpotEffectFeedback } from "@/lib/post-reward-effect-feedback-builders"
@@ -56,6 +57,93 @@ export {
   parsePostRewardPoolConfigFromContent,
 }
 export type { NormalizedPostRedPacketConfig, PostRewardPoolClaimResult }
+
+export async function cancelPostRedPacketWithRefundInTransaction(params: {
+  tx: Prisma.TransactionClient
+  postId: string
+  pointName: string
+  reason?: string
+}) {
+  const packet = await params.tx.postRedPacket.findUnique({
+    where: { postId: params.postId },
+    select: {
+      id: true,
+      postId: true,
+      senderId: true,
+      status: true,
+      remainingPoints: true,
+      remainingCount: true,
+      sender: {
+        select: {
+          points: true,
+        },
+      },
+    },
+  })
+
+  if (!packet || packet.status !== "ACTIVE" || packet.remainingPoints <= 0) {
+    return 0
+  }
+
+  const updated = await params.tx.postRedPacket.updateMany({
+    where: {
+      id: packet.id,
+      status: "ACTIVE",
+      remainingPoints: packet.remainingPoints,
+    },
+    data: {
+      remainingPoints: 0,
+      remainingCount: 0,
+      status: "CANCELLED",
+    },
+  })
+
+  if (updated.count === 0) {
+    return 0
+  }
+
+  const preparedRefund = await prepareScopedPointDelta({
+    scopeKey: "RED_PACKET_REFUND",
+    baseDelta: packet.remainingPoints,
+    userId: packet.senderId,
+  })
+
+  await applyPointDelta({
+    tx: params.tx,
+    userId: packet.senderId,
+    beforeBalance: packet.sender.points,
+    prepared: preparedRefund,
+    pointName: params.pointName,
+    reason: params.reason ?? `帖子下架/删除，退回未领取红包 ${packet.remainingPoints}${params.pointName}`,
+    eventType: POINT_LOG_EVENT_TYPES.RED_PACKET_REFUND,
+    eventData: {
+      postId: packet.postId,
+      redPacketId: packet.id,
+      refundedPoints: packet.remainingPoints,
+      remainingCount: packet.remainingCount,
+    },
+    relatedType: "POST",
+    relatedId: packet.postId,
+  })
+
+  return packet.remainingPoints
+}
+
+export async function cancelPostRedPacketWithRefund(params: {
+  postId: string
+  pointName: string
+  reason?: string
+}) {
+  return runSerializablePostRewardPoolTransaction((tx) =>
+    cancelPostRedPacketWithRefundInTransaction({
+      tx,
+      postId: params.postId,
+      pointName: params.pointName,
+      reason: params.reason,
+    }), {
+      postId: params.postId,
+    })
+}
 
 function attachJackpotDepositFeedback(
   feedback: PostRewardPoolEffectFeedback | null,

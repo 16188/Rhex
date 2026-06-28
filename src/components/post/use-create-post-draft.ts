@@ -82,6 +82,7 @@ export function useCreatePostDraft({
 }: UseCreatePostDraftOptions) {
   const isEditMode = mode === "edit"
   const storageMode = isEditMode ? "edit" : "create"
+  const canEditLotterySettings = Boolean(initialValues?.lotteryConfig?.editable)
 
   const initialDraftData = useMemo(() => {
     const draft = buildInitialPostDraft(initialValues, boardOptions, pointName)
@@ -419,6 +420,7 @@ export function useCreatePostDraft({
     meetsAttachmentPermission,
     canAddAttachments,
     canManageAttachments,
+    canEditLotterySettings,
     shouldShowAttachmentEntry,
     minPostVipLevel,
     canPostInBoard,

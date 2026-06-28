@@ -2,6 +2,8 @@
 
 ## 2026-06-26
 
+- Refunded remaining unclaimed post red packet/jackpot points to the sender when a post is taken offline, rejected, or deleted, and marked the reward pool as cancelled to prevent later claims.
+- Allowed admins to edit lottery settings on lottery posts that have not been drawn or cancelled, including participant conditions, participant goal, and redemption-code prizes, while preventing silent changes to the total cost of automatic points/VIP prizes.
 - Improved analytics script compatibility for Rybbit by preserving custom script attributes such as `data-site-id` and loading external analytics scripts through Next.js Script.
 - Added a confirmation prompt before paid extra likes are charged after the daily free like quota is used.
 - Made reply-triggered post red packet and jackpot settlement run immediately after comment creation.

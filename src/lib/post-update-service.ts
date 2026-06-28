@@ -12,6 +12,8 @@ import { normalizePostAttachmentInputs, syncPostAttachments } from "@/lib/post-a
 import { processInternalPostCardEmbeds } from "@/lib/post-card-embed.server"
 import { buildPostContentDocument, getAllPostContentText, getPostContentMeta, serializePostContentDocument } from "@/lib/post-content"
 import { isPostStillEditable } from "@/lib/post-edit-window"
+import { determineLotteryTriggerMode, normalizeLotteryConfig } from "@/lib/lottery"
+import { buildLotteryPrizeCreateInputs, calculateLotteryAutoPrizeTotalCost } from "@/lib/lottery-prizes"
 import { normalizeManualTags, syncPostTaxonomy } from "@/lib/post-editor"
 import { getSiteSettings } from "@/lib/site-settings"
 import { validatePostPayload } from "@/lib/validators"
@@ -84,6 +86,32 @@ export async function updatePostFlow(input: {
   }
 
   const canEditNormally = isAdmin || isPostStillEditable(post.createdAt, settings.postEditableMinutes)
+  const canEditLotterySettings = Boolean(
+    isAdmin
+    && post.type === "LOTTERY"
+    && post.lotteryStatus !== "DRAWN"
+    && post.lotteryStatus !== "CANCELLED",
+  )
+  const normalizedLottery = canEditLotterySettings
+    ? normalizeLotteryConfig(validated.data.lotteryConfig)
+    : null
+
+  if (canEditLotterySettings && (!normalizedLottery || !normalizedLottery.success || !normalizedLottery.data)) {
+    apiError(400, normalizedLottery?.message ?? "抽奖配置不合法")
+  }
+
+  if (canEditLotterySettings && normalizedLottery?.data) {
+    const existingLotteryAutoPrizeTotalCost = calculateLotteryAutoPrizeTotalCost(post.lotteryPrizes, settings)
+    const nextLotteryAutoPrizeTotalCost = calculateLotteryAutoPrizeTotalCost(normalizedLottery.data.prizes, settings)
+
+    if (existingLotteryAutoPrizeTotalCost === null || nextLotteryAutoPrizeTotalCost === null) {
+      apiError(400, "抽奖自动奖品成本计算失败，请检查奖项配置")
+    }
+
+    if (existingLotteryAutoPrizeTotalCost !== nextLotteryAutoPrizeTotalCost) {
+      apiError(400, "未开奖抽奖帖暂不支持修改自动积分或会员奖品的总成本，请保持积分/VIP奖项总成本不变")
+    }
+  }
 
   if (canEditNormally && !appendedContent) {
     await verifyCreatePostCaptchaWithAddonProviders({
@@ -213,6 +241,7 @@ export async function updatePostFlow(input: {
       const activityAt = new Date()
       let nextContent = serializedContent
       let nextSummary = summary
+      const lotteryData = normalizedLottery?.data ?? null
 
       const mentionResult = await createPostMentionNotifications({
         tx,
@@ -239,6 +268,32 @@ export async function updatePostFlow(input: {
           commentsVisibleToAuthorOnly,
           minViewLevel,
           minViewVipLevel,
+          ...(lotteryData
+            ? {
+                lotteryTriggerMode: determineLotteryTriggerMode({
+                  endsAt: lotteryData.endsAt ?? null,
+                  participantGoal: lotteryData.participantGoal ?? null,
+                }),
+                lotteryStartsAt: lotteryData.startsAt ?? new Date(),
+                lotteryEndsAt: lotteryData.endsAt ?? null,
+                lotteryParticipantGoal: lotteryData.participantGoal ?? null,
+                lotteryPrizes: {
+                  deleteMany: {},
+                  create: buildLotteryPrizeCreateInputs(lotteryData.prizes, settings),
+                },
+                lotteryConditions: {
+                  deleteMany: {},
+                  create: lotteryData.conditions.map((condition, index) => ({
+                    type: condition.type,
+                    operator: condition.operator ?? "GTE",
+                    value: condition.value,
+                    description: condition.description,
+                    groupKey: condition.groupKey ?? "default",
+                    sortOrder: index,
+                  })),
+                },
+              }
+            : {}),
         },
       })
 

@@ -470,7 +470,7 @@ export function CreatePostFormShell({
           onAddLotteryCondition={addLotteryCondition}
           onRemoveLotteryCondition={removeLotteryCondition}
           onRemoveLotteryConditionGroup={removeLotteryConditionGroup}
-          disabled={isEditMode}
+          disabled={isEditMode && !draftController.canEditLotterySettings}
         />
       ) : null}
       {addonToolsAfter}

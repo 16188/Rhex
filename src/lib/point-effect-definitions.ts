@@ -18,6 +18,7 @@ export const POINT_EFFECT_SCOPE_OPTIONS = [
   { value: "RED_PACKET_PUBLISH", label: "发布红包", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: false, badgeEffectRuntimeMatchable: false },
   { value: "RED_PACKET_RANDOM_CLAIM_PROBABILITY", label: "红包随机领取概率", targetTypes: [PointEffectTargetType.PROBABILITY], badgeEffectEnabled: true, badgeEffectRuntimeMatchable: true },
   { value: "RED_PACKET_CLAIM", label: "领取红包", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: true, badgeEffectRuntimeMatchable: true },
+  { value: "RED_PACKET_REFUND", label: "红包剩余退回", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: false, badgeEffectRuntimeMatchable: false },
   { value: "JACKPOT_PUBLISH", label: "发布聚宝盆", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: false, badgeEffectRuntimeMatchable: false },
   { value: "JACKPOT_REPLY_INCREMENT", label: "聚宝盆回帖加池", targetTypes: [PointEffectTargetType.POINTS], badgeEffectEnabled: false, badgeEffectRuntimeMatchable: false },
   { value: "JACKPOT_HIT_PROBABILITY", label: "聚宝盆中奖概率", targetTypes: [PointEffectTargetType.PROBABILITY], badgeEffectEnabled: true, badgeEffectRuntimeMatchable: true },

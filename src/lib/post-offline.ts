@@ -4,6 +4,7 @@ import { executeAddonActionHook } from "@/addons-host/runtime/hooks"
 import { findPostOfflineTarget, findPostOfflineUser, runPostOfflineTransaction, updatePostOfflineTarget } from "@/db/post-offline-queries"
 import { getCurrentUser } from "@/lib/auth"
 import { applyPointDelta, prepareScopedPointDelta } from "@/lib/point-center"
+import { cancelPostRedPacketWithRefundInTransaction } from "@/lib/post-red-packets"
 import { getSiteSettings } from "@/lib/site-settings"
 import { isVipActive } from "@/lib/vip-status"
 
@@ -108,6 +109,13 @@ export async function offlineOwnPost(input: { postId: string; reason?: string | 
     const nextReviewNote = [reason || null, latestPrice.amount > 0 ? `作者自主下线（${latestPrice.label}，扣除 ${latestPrice.amount} ${settings.pointName}）` : `作者自主下线（${latestPrice.label}，免费）`]
       .filter(Boolean)
       .join("；")
+
+    await cancelPostRedPacketWithRefundInTransaction({
+      tx,
+      postId: post.id,
+      pointName: settings.pointName,
+      reason: "作者下架帖子，退回未领取红包",
+    })
 
     const updated = await updatePostOfflineTarget(tx, {
       postId: post.id,

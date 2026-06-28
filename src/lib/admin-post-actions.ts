@@ -22,8 +22,10 @@ import { revalidateHomeSidebarStatsCache } from "@/lib/home-sidebar-stats"
 import { ensureCanManageBoard, ensureCanManagePost, getAvailablePinScopes } from "@/lib/moderator-permissions"
 import { createSystemNotification } from "@/lib/notification-writes"
 import { activatePostAuctionForPost } from "@/lib/post-auctions"
+import { cancelPostRedPacketWithRefund } from "@/lib/post-red-packets"
 import { recordApprovedPostTaskEvent } from "@/lib/task-center-service"
 import { revalidateUpdatedPostMutation } from "@/lib/content-mutation-revalidation"
+import { getSiteSettings } from "@/lib/site-settings"
 
 type ManagedPostForRevalidation = Awaited<ReturnType<typeof ensureCanManagePost>>
 
@@ -73,6 +75,12 @@ export const adminPostActionHandlers: Record<string, AdminActionDefinition> = {
     const post = await ensureCanManagePost(context.actor, context.targetId)
     const previousStatus = post.status as AddonReadablePostStatus
     const reason = context.message || "管理员下线帖子"
+    const settings = await getSiteSettings()
+    await cancelPostRedPacketWithRefund({
+      postId: context.targetId,
+      pointName: settings.pointName,
+      reason: "管理员下架帖子，退回未领取红包",
+    })
     await updatePostStatus(context.targetId, PostStatus.OFFLINE, reason)
     revalidateHomeSidebarStatsCache()
     revalidateAdminPostMutation(post)
@@ -102,12 +110,18 @@ export const adminPostActionHandlers: Record<string, AdminActionDefinition> = {
   "post.delete": defineAdminAction({ targetType: "POST", revalidatePaths: ["/", "/admin"], buildDetail: () => "管理员删除帖子" }, async (context) => {
     const reason = context.message || "管理员删除帖子"
     const post = await ensureCanManagePost(context.actor, context.targetId)
+    const settings = await getSiteSettings()
     await executeAddonActionHook("post.delete.before", {
       postId: context.targetId,
       editorId: String(context.adminUserId),
       reason,
     }, {
       throwOnError: true,
+    })
+    await cancelPostRedPacketWithRefund({
+      postId: context.targetId,
+      pointName: settings.pointName,
+      reason: "管理员删除帖子，退回未领取红包",
     })
     await deletePostPermanently(context.targetId)
     revalidateHomeSidebarStatsCache()
@@ -246,6 +260,12 @@ export const adminPostActionHandlers: Record<string, AdminActionDefinition> = {
       apiError(400, "请填写驳回原因")
     }
     const previousStatus = post.status as AddonReadablePostStatus
+    const settings = await getSiteSettings()
+    await cancelPostRedPacketWithRefund({
+      postId: context.targetId,
+      pointName: settings.pointName,
+      reason: "帖子审核驳回，退回未领取红包",
+    })
     await updatePostStatus(context.targetId, PostStatus.OFFLINE, context.message)
     revalidateHomeSidebarStatsCache()
     revalidateAdminPostMutation(post)
