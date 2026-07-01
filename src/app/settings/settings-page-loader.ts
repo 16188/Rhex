@@ -14,7 +14,7 @@ import { getCurrentUserLevelProgressView } from "@/lib/user-level-view"
 import { getUserFavoriteCollectionManageData } from "@/lib/favorite-collections"
 import { getMonthKey } from "@/lib/date-key"
 import { getUserBlocks, getUserBoardFollows, getUserFavoritePosts, getUserFollowers, getUserLikedPosts, getUserPostFollows, getUserPosts, getUserReplies, getUserTagFollows, getUserUserFollows } from "@/lib/user-panel"
-import { getUserAccountSettings, getUserProfile } from "@/lib/users"
+import { getInviteLeaderboards, getUserAccountSettings, getUserProfile } from "@/lib/users"
 import { getCurrentUserVerificationData } from "@/lib/verifications"
 import { describeVipTierBilling, resolveVipTierPrice } from "@/lib/vip-tier-pricing"
 import { getVipLevel, isVipActive } from "@/lib/vip-status"
@@ -227,6 +227,7 @@ export interface SettingsPageData {
   invitePath: string
   inviteCodePrice: number
   inviteCodePriceDescription: string
+  inviteLeaderboards: Awaited<ReturnType<typeof getInviteLeaderboards>> | null
   nicknameChangePointCost: number
   nicknameChangePriceDescription: string
   introductionChangePointCost: number
@@ -382,6 +383,7 @@ async function loadSettingsTabData(
     pointsDashboard,
     pointLogs,
     accountBindings,
+    inviteLeaderboards,
   ] = await Promise.all([
     currentTab === "post-management" && currentPostTab === "posts"
       ? getUserPosts(userId, { pageSize: 10, after: listAfter, before: listBefore })
@@ -449,6 +451,7 @@ async function loadSettingsTabData(
           authPasskeyEnabled: settings.authPasskeyEnabled,
         })
       : Promise.resolve(null),
+    currentTab === "invite" ? getInviteLeaderboards() : Promise.resolve(null),
   ])
 
   return {
@@ -471,6 +474,7 @@ async function loadSettingsTabData(
     pointsDashboard,
     pointLogs,
     accountBindings,
+    inviteLeaderboards,
   }
 }
 

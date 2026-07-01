@@ -158,6 +158,52 @@ export function countUserPublicPostsByUsername(username: string) {
   })
 }
 
+export function findInviteLeaderboardGroups(options: { start?: Date; end?: Date; limit?: number } = {}) {
+  const take = Math.min(Math.max(1, Math.trunc(options.limit ?? 10)), 50)
+  const createdAt = options.start && options.end
+    ? {
+        gte: options.start,
+        lt: options.end,
+      }
+    : undefined
+
+  return prisma.user.groupBy({
+    by: ["inviterId"],
+    where: {
+      inviterId: { not: null },
+      ...(createdAt ? { createdAt } : {}),
+    },
+    _count: {
+      _all: true,
+    },
+    orderBy: [
+      { _count: { inviterId: "desc" } },
+      { inviterId: "asc" },
+    ],
+    take,
+  })
+}
+
+export function findInviteLeaderboardUsers(userIds: number[]) {
+  if (userIds.length === 0) {
+    return Promise.resolve([])
+  }
+
+  return prisma.user.findMany({
+    where: {
+      id: {
+        in: userIds,
+      },
+    },
+    select: {
+      id: true,
+      username: true,
+      nickname: true,
+      avatarPath: true,
+    },
+  })
+}
+
 function buildTimestampCursorWhere<T extends string>(
   idField: T,
   createdAtField: T,

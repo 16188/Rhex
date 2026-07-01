@@ -1,10 +1,11 @@
 import { resolvePagination } from "@/db/helpers"
-import { countUserPublicPostsByUsername, countVisibleUserRepliesByUsername, findUserAccountSettingsById, findUserPostsByUsername, findUserProfileByUsername, findUserRepliesByUsername } from "@/db/user-queries"
+import { countUserPublicPostsByUsername, countVisibleUserRepliesByUsername, findInviteLeaderboardGroups, findInviteLeaderboardUsers, findUserAccountSettingsById, findUserPostsByUsername, findUserProfileByUsername, findUserRepliesByUsername } from "@/db/user-queries"
 import { getDisplayedBadgesForUser } from "@/lib/badges"
 import { getCurrentSessionActor } from "@/lib/auth"
 import { getLevelBadgeData } from "@/lib/level-badge"
 import { getAnonymousMaskDisplayIdentity } from "@/lib/post-anonymous"
 import { mapListPost } from "@/lib/post-map"
+import { getBusinessDayRange } from "@/lib/formatters"
 import type { UserProfileVisibility } from "@/lib/user-profile-settings"
 import {
   applyHookedUserPresentationToNamedItem,
@@ -31,6 +32,22 @@ const USER_PROFILE_REPLIES_PAGE_SIZE = 6
 const USER_PROFILE_ACTIVE_BOARDS_LIMIT = 5
 const USER_PROFILE_ACTIVE_BOARD_BATCH_SIZE = 20
 const USER_PROFILE_ACTIVE_BOARD_MAX_BATCHES = 10
+const INVITE_LEADERBOARD_LIMIT = 10
+
+export interface InviteLeaderboardItem {
+  rank: number
+  userId: number
+  username: string
+  displayName: string
+  avatarPath?: string | null
+  inviteCount: number
+}
+
+export interface InviteLeaderboards {
+  total: InviteLeaderboardItem[]
+  today: InviteLeaderboardItem[]
+  todayKey: string
+}
 
 export interface SiteUserProfile {
   id: number
@@ -179,6 +196,57 @@ export async function getCurrentUserProfile(): Promise<SiteUserProfile | null> {
   }
 
   return getUserProfile(actor.username)
+}
+
+function mapInviteLeaderboardGroups(
+  groups: Awaited<ReturnType<typeof findInviteLeaderboardGroups>>,
+  users: Map<number, Awaited<ReturnType<typeof findInviteLeaderboardUsers>>[number]>,
+): InviteLeaderboardItem[] {
+  const items: InviteLeaderboardItem[] = []
+
+  for (const group of groups) {
+    if (typeof group.inviterId !== "number") {
+      continue
+    }
+
+    const user = users.get(group.inviterId)
+    if (!user) {
+      continue
+    }
+
+    items.push({
+      rank: items.length + 1,
+      userId: user.id,
+      username: user.username,
+      displayName: getUserDisplayName(user, user.username),
+      avatarPath: getUserAvatarPath(user),
+      inviteCount: group._count._all,
+    })
+  }
+
+  return items
+}
+
+export async function getInviteLeaderboards(limit = INVITE_LEADERBOARD_LIMIT): Promise<InviteLeaderboards> {
+  const { start, end, dayKey } = getBusinessDayRange()
+  const normalizedLimit = Math.min(Math.max(1, Math.trunc(limit)), 50)
+  const [totalGroups, todayGroups] = await Promise.all([
+    findInviteLeaderboardGroups({ limit: normalizedLimit }),
+    findInviteLeaderboardGroups({ start, end, limit: normalizedLimit }),
+  ])
+  const userIds = Array.from(new Set(
+    [...totalGroups, ...todayGroups]
+      .map((group) => group.inviterId)
+      .filter((id): id is number => typeof id === "number"),
+  ))
+  const users = await findInviteLeaderboardUsers(userIds)
+  const usersById = new Map(users.map((user) => [user.id, user]))
+
+  return {
+    total: mapInviteLeaderboardGroups(totalGroups, usersById),
+    today: mapInviteLeaderboardGroups(todayGroups, usersById),
+    todayKey: dayKey,
+  }
 }
 
 export async function getUserPostsPage(username: string, input: { page?: unknown } = {}) {
