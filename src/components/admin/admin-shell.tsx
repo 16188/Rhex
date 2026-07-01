@@ -1,6 +1,7 @@
+import Image from "next/image"
 import Link from "next/link"
 import { Fragment, type CSSProperties, type ReactNode } from "react"
-import { ArrowUpRight, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowUpRight, ShieldCheck } from "lucide-react"
 
 import { executeAddonWaterfallHook } from "@/addons-host/runtime/hooks"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -20,6 +21,8 @@ import {
   type AdminNavKey,
 } from "@/lib/admin-navigation"
 import { getAvatarFallback } from "@/lib/avatar"
+import { resolveSiteMarkImagePath } from "@/lib/site-branding"
+import { getSiteSettings } from "@/lib/site-settings"
 
 const adminThemeStyle: CSSProperties = {
   ["--sidebar-width" as string]: "8rem",
@@ -51,9 +54,12 @@ export async function AdminShell({
   breadcrumbs,
   children,
 }: AdminShellProps) {
+  const settings = await getSiteSettings()
   const currentItem = getAdminNavigationItem(currentKey)
   const resolvedDescription = headerDescription ?? currentItem.description
   const navigationGroups = getAdminNavigationGroups(adminRole)
+  const adminBrandName = settings.siteName.trim() || "Rhex BBS"
+  const adminBrandLogoPath = resolveSiteMarkImagePath(settings.siteLogoPath, settings.siteIconPath)
   const resolvedBreadcrumbs =
     breadcrumbs ??
     [
@@ -91,13 +97,13 @@ export async function AdminShell({
                 tooltip="后台管理"
                 render={<Link href="/admin" />}
               >
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-xs">
-                  <Sparkles className="size-4" />
+                <div className="relative flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-xs">
+                  <Image src={adminBrandLogoPath} alt="" fill sizes="32px" unoptimized className="object-contain p-1" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">后台管理</span>
                   <span className="truncate text-xs text-sidebar-foreground/70">
-                    Rhex BBS
+                    {adminBrandName}
                   </span>
                 </div>
               </SidebarMenuButton>

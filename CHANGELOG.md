@@ -2,6 +2,7 @@
 
 ## 2026-06-26
 
+- Changed the default node app-entry link from `/boards` to `/funs` and made the admin sidebar brand use the configured site logo and site name.
 - Added invite-code purchase rules for daily purchase limits and purchased-code validity days; purchased codes now expire after the configured period without refund and registration rejects expired codes.
 - Refunded remaining unclaimed post red packet/jackpot points to the sender when a post is taken offline, rejected, or deleted, and marked the reward pool as cancelled to prevent later claims.
 - Allowed admins to edit lottery settings on lottery posts that have not been drawn or cancelled, including participant conditions, participant goal, and redemption-code prizes, while preventing silent changes to the total cost of automatic points/VIP prizes.
