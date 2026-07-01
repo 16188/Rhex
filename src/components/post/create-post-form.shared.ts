@@ -156,6 +156,16 @@ const LOTTERY_CONDITION_TYPE_CONFIG = {
     placeholder: () => "\u6700\u5c11\u4eca\u65e5\u83b7\u8d5e\u6570\uff0c\u5982 5",
     defaultDescription: () => "\u4eca\u65e5\u83b7\u8d5e\u6570\u8fbe\u5230\u8981\u6c42",
   },
+  DAILY_INVITE_COUNT: {
+    label: "\u4eca\u65e5\u9080\u8bf7\u6570\u91cf",
+    category: "THRESHOLD",
+    helperText: "\u9650\u5236\u7528\u6237\u5f53\u65e5\u9080\u8bf7\u6ce8\u518c\u6210\u529f\u6570\u91cf\u8fbe\u5230\u6307\u5b9a\u503c\u3002",
+    valueMode: "number",
+    defaultValue: "1",
+    defaultOperator: "GTE",
+    placeholder: () => "\u6700\u5c11\u4eca\u65e5\u9080\u8bf7\u6570\u91cf\uff0c\u5982 1",
+    defaultDescription: () => "\u4eca\u65e5\u9080\u8bf7\u6570\u91cf\u8fbe\u5230\u8981\u6c42",
+  },
 } as const satisfies Record<string, LotteryConditionTypeConfig>
 
 const LOTTERY_CONDITION_TYPE_ORDER = [
@@ -171,6 +181,7 @@ const LOTTERY_CONDITION_TYPE_ORDER = [
   "DAILY_POST_COUNT",
   "DAILY_COMMENT_COUNT",
   "DAILY_RECEIVED_LIKE_COUNT",
+  "DAILY_INVITE_COUNT",
 ] as const
 
 const LOTTERY_CONDITION_VALUE_MODES_WITH_INPUT = new Set<LotteryConditionValueMode>(["number", "text", "user-level", "vip-level"])

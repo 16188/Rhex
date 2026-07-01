@@ -1,5 +1,5 @@
 import { resolvePagination } from "@/db/helpers"
-import { countUserPublicPostsByUsername, countVisibleUserRepliesByUsername, findInviteLeaderboardGroups, findInviteLeaderboardUsers, findUserAccountSettingsById, findUserPostsByUsername, findUserProfileByUsername, findUserRepliesByUsername } from "@/db/user-queries"
+import { countSuccessfulInvitesByInviterInRange, countUserPublicPostsByUsername, countVisibleUserRepliesByUsername, findInviteLeaderboardGroups, findInviteLeaderboardUsers, findUserAccountSettingsById, findUserPostsByUsername, findUserProfileByUsername, findUserRepliesByUsername } from "@/db/user-queries"
 import { getDisplayedBadgesForUser } from "@/lib/badges"
 import { getCurrentSessionActor } from "@/lib/auth"
 import { getLevelBadgeData } from "@/lib/level-badge"
@@ -247,6 +247,11 @@ export async function getInviteLeaderboards(limit = INVITE_LEADERBOARD_LIMIT): P
     today: mapInviteLeaderboardGroups(todayGroups, usersById),
     todayKey: dayKey,
   }
+}
+
+export async function getUserTodayInviteCount(userId: number) {
+  const { start, end } = getBusinessDayRange()
+  return countSuccessfulInvitesByInviterInRange(userId, start, end)
 }
 
 export async function getUserPostsPage(username: string, input: { page?: unknown } = {}) {

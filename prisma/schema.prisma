@@ -87,6 +87,7 @@ enum LotteryConditionType {
   DAILY_POST_COUNT
   DAILY_COMMENT_COUNT
   DAILY_RECEIVED_LIKE_COUNT
+  DAILY_INVITE_COUNT
 }
 
 enum LotteryConditionOperator {

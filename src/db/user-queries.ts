@@ -176,11 +176,27 @@ export function findInviteLeaderboardGroups(options: { start?: Date; end?: Date;
     _count: {
       _all: true,
     },
+    _max: {
+      createdAt: true,
+    },
     orderBy: [
       { _count: { inviterId: "desc" } },
+      { _max: { createdAt: "asc" } },
       { inviterId: "asc" },
     ],
     take,
+  })
+}
+
+export function countSuccessfulInvitesByInviterInRange(inviterId: number, start: Date, end: Date) {
+  return prisma.user.count({
+    where: {
+      inviterId,
+      createdAt: {
+        gte: start,
+        lt: end,
+      },
+    },
   })
 }
 

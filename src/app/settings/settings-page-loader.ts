@@ -14,7 +14,7 @@ import { getCurrentUserLevelProgressView } from "@/lib/user-level-view"
 import { getUserFavoriteCollectionManageData } from "@/lib/favorite-collections"
 import { getMonthKey } from "@/lib/date-key"
 import { getUserBlocks, getUserBoardFollows, getUserFavoritePosts, getUserFollowers, getUserLikedPosts, getUserPostFollows, getUserPosts, getUserReplies, getUserTagFollows, getUserUserFollows } from "@/lib/user-panel"
-import { getInviteLeaderboards, getUserAccountSettings, getUserProfile } from "@/lib/users"
+import { getInviteLeaderboards, getUserAccountSettings, getUserProfile, getUserTodayInviteCount } from "@/lib/users"
 import { getCurrentUserVerificationData } from "@/lib/verifications"
 import { describeVipTierBilling, resolveVipTierPrice } from "@/lib/vip-tier-pricing"
 import { getVipLevel, isVipActive } from "@/lib/vip-status"
@@ -228,6 +228,7 @@ export interface SettingsPageData {
   inviteCodePrice: number
   inviteCodePriceDescription: string
   inviteLeaderboards: Awaited<ReturnType<typeof getInviteLeaderboards>> | null
+  todayInviteCount: number | null
   nicknameChangePointCost: number
   nicknameChangePriceDescription: string
   introductionChangePointCost: number
@@ -384,6 +385,7 @@ async function loadSettingsTabData(
     pointLogs,
     accountBindings,
     inviteLeaderboards,
+    todayInviteCount,
   ] = await Promise.all([
     currentTab === "post-management" && currentPostTab === "posts"
       ? getUserPosts(userId, { pageSize: 10, after: listAfter, before: listBefore })
@@ -452,6 +454,7 @@ async function loadSettingsTabData(
         })
       : Promise.resolve(null),
     currentTab === "invite" ? getInviteLeaderboards() : Promise.resolve(null),
+    currentTab === "invite" ? getUserTodayInviteCount(userId) : Promise.resolve(null),
   ])
 
   return {
@@ -475,6 +478,7 @@ async function loadSettingsTabData(
     pointLogs,
     accountBindings,
     inviteLeaderboards,
+    todayInviteCount,
   }
 }
 

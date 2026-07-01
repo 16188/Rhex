@@ -10,7 +10,7 @@ import type { SettingsPageData } from "@/app/settings/settings-page-loader"
 type InviteLeaderboardItems = NonNullable<SettingsPageData["inviteLeaderboards"]>["total"]
 
 export function InviteSettingsSection({ data }: { data: SettingsPageData }) {
-  const { profile, settings, invitePath, inviteCodePrice, inviteCodePriceDescription, inviteLeaderboards } = data
+  const { profile, settings, invitePath, inviteCodePrice, inviteCodePriceDescription, inviteLeaderboards, todayInviteCount } = data
 
   return (
     <Card>
@@ -18,10 +18,14 @@ export function InviteSettingsSection({ data }: { data: SettingsPageData }) {
         <CardTitle>邀请中心</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-xl bg-secondary/60 p-4">
             <p className="text-2xl font-semibold">{profile.inviteCount}</p>
             <p className="mt-1 text-sm text-muted-foreground">已邀请注册</p>
+          </div>
+          <div className="rounded-xl bg-secondary/60 p-4">
+            <p className="text-2xl font-semibold">{formatNumber(todayInviteCount ?? 0)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">今日邀请注册</p>
           </div>
           <div className="rounded-xl bg-secondary/60 p-4">
             <p className="text-2xl font-semibold">{profile.inviterUsername ?? "-"}</p>
