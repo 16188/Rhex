@@ -63,6 +63,8 @@ export interface AdminBasicSettingsInitialSettings {
   registerInviteCodeHelpTitle: string
   registerInviteCodeHelpUrl: string
   inviteCodePurchaseEnabled: boolean
+  inviteCodePurchaseDailyLimit: number
+  inviteCodeValidityDays: number
   boardApplicationEnabled: boolean
   registerCaptchaMode: "OFF" | "TURNSTILE" | "BUILTIN" | "POW"
   loginCaptchaMode: "OFF" | "TURNSTILE" | "BUILTIN" | "POW"
@@ -235,6 +237,8 @@ export interface AdminBasicSettingsDraft {
   registerInviteCodeHelpTitle: string
   registerInviteCodeHelpUrl: string
   inviteCodePurchaseEnabled: boolean
+  inviteCodePurchaseDailyLimit: string
+  inviteCodeValidityDays: string
   boardApplicationEnabled: boolean
   registerCaptchaMode: "OFF" | "TURNSTILE" | "BUILTIN" | "POW"
   loginCaptchaMode: "OFF" | "TURNSTILE" | "BUILTIN" | "POW"
@@ -477,6 +481,8 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     registerInviteCodeHelpTitle: coerceString(initialSettings.registerInviteCodeHelpTitle),
     registerInviteCodeHelpUrl: coerceString(initialSettings.registerInviteCodeHelpUrl),
     inviteCodePurchaseEnabled: coerceBoolean(initialSettings.inviteCodePurchaseEnabled, false),
+    inviteCodePurchaseDailyLimit: coerceNumberString(initialSettings.inviteCodePurchaseDailyLimit, 0),
+    inviteCodeValidityDays: coerceNumberString(initialSettings.inviteCodeValidityDays, 1),
     boardApplicationEnabled: coerceBoolean(initialSettings.boardApplicationEnabled, true),
     registerCaptchaMode: initialSettings.registerCaptchaMode ?? "OFF",
     loginCaptchaMode: initialSettings.loginCaptchaMode ?? "OFF",
@@ -642,6 +648,8 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
       registerInviteCodeHelpTitle: draft.registerInviteCodeHelpTitle,
       registerInviteCodeHelpUrl: draft.registerInviteCodeHelpUrl,
       inviteCodePurchaseEnabled: draft.inviteCodePurchaseEnabled,
+      inviteCodePurchaseDailyLimit: Number(draft.inviteCodePurchaseDailyLimit),
+      inviteCodeValidityDays: Number(draft.inviteCodeValidityDays),
       registerCaptchaMode: draft.registerCaptchaMode,
       loginCaptchaMode: draft.loginCaptchaMode,
       turnstileSiteKey: draft.turnstileSiteKey,

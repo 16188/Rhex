@@ -22,7 +22,7 @@ import { parseMarkdownEmojiMapJson } from "@/lib/markdown-emoji"
 import { normalizeCommentLoadMode } from "@/lib/comment-load-mode"
 import { normalizePostListLoadMode } from "@/lib/post-list-load-mode"
 import { normalizePostListDisplayMode } from "@/lib/post-list-display"
-import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveEmailBusinessSwitchSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveLeftSidebarDisplaySettings, resolveLeftSidebarHomeSettings, resolveLeftSidebarNavigationSettings, resolveMarkdownImageUploadSettings, resolveMentionRecommendationSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegisterPasswordPolicySettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveSmsProviderSettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUserProfileDisplaySettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
+import { resolveAnonymousPostSettings, resolveAttachmentFeatureSettings, resolveAuthProviderSettings, resolveAvatarChangePointCostSettings, resolveBoardApplicationSettings, resolveBoardTreasurySettings, resolveCheckInMakeUpPriceSettings, resolveCheckInRewardSettings, resolveCheckInStreakSettings, resolveCommentAccessSettings, resolveEmailBusinessSwitchSettings, resolveFooterCopyrightSettings, resolveHomeFeedPostListLoadSettings, resolveHomeHotFeedSettings, resolveHomeSidebarAnnouncementSettings, resolveImageWatermarkSettings, resolveInteractionGateSettings, resolveIntroductionChangePointCostSettings, resolveInviteCodePurchasePriceSettings, resolveInviteCodePurchaseRuleSettings, resolveLeftSidebarDisplaySettings, resolveLeftSidebarHomeSettings, resolveLeftSidebarNavigationSettings, resolveMarkdownImageUploadSettings, resolveMentionRecommendationSettings, resolveMessageMediaSettings, resolveNicknameChangePointCostSettings, resolvePostContentLengthSettings, resolvePostJackpotSettings, resolvePostPageSizeSettings, resolvePostRedPacketSettings, resolvePostSlugGenerationSettings, resolveRegisterEmailWhitelistSettings, resolveRegisterInviteCodeHelpSettings, resolveRegisterNicknameLengthSettings, resolveRegisterPasswordPolicySettings, resolveRegistrationEmailTemplateSettings, resolveRegistrationRewardSettings, resolveSiteBrandingSettings, resolveSiteChatSettings, resolveSiteSecuritySettings, resolveSmsProviderSettings, resolveThemeCustomizationSettingsFromAppState, resolveUploadObjectStorageSettings, resolveUserProfileDisplaySettings, resolveUsernameSensitiveWordSettings, resolveVipLevelIconSettings, resolveVipNameColorSettings } from "@/lib/site-settings-app-state"
 import { resolveAuthPageShowcaseSettings } from "@/lib/site-settings-app-state"
 import { resolveAuthProviderSensitiveConfig, resolveCaptchaSensitiveConfig, resolveSmsSensitiveConfig, resolveUploadStorageSensitiveConfig } from "@/lib/site-settings-sensitive-state"
 import { resolveSiteSearchSettings } from "@/lib/site-search-settings"
@@ -199,6 +199,9 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
   const inviteCodePurchasePrices = resolveInviteCodePurchasePriceSettings({
     appStateJson: record.appStateJson,
     normalPrice: record.inviteCodePrice,
+  })
+  const inviteCodePurchaseRules = resolveInviteCodePurchaseRuleSettings({
+    appStateJson: record.appStateJson,
   })
   const checkInMakeUpPrices = resolveCheckInMakeUpPriceSettings({
     appStateJson: record.appStateJson,
@@ -513,6 +516,8 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     registerInviteCodeHelpTitle: registerInviteCodeHelpSettings.title,
     registerInviteCodeHelpUrl: registerInviteCodeHelpSettings.url,
     inviteCodePurchaseEnabled: record.inviteCodePurchaseEnabled,
+    inviteCodePurchaseDailyLimit: inviteCodePurchaseRules.dailyLimit,
+    inviteCodeValidityDays: inviteCodePurchaseRules.validityDays,
     boardApplicationEnabled: boardApplicationSettings.enabled,
     inviteCodePrice: inviteCodePurchasePrices.normal,
     inviteCodeVip1Price: inviteCodePurchasePrices.vip1,

@@ -135,6 +135,11 @@ export type IntroductionChangePointCostSettings = VipTierPricing
 export type AvatarChangePointCostSettings = VipTierPricing
 export type InviteCodePurchasePriceSettings = VipTierPricing
 
+export interface InviteCodePurchaseRuleSettings {
+  dailyLimit: number
+  validityDays: number
+}
+
 export interface MarkdownImageUploadSettings {
   enabled: boolean
 }

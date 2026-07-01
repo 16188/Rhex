@@ -8,6 +8,7 @@ export async function purchaseInviteCodeTransaction(params: {
   price: number
   pointName: string
   code: string
+  expiresAt: Date
 }) {
   const preparedPurchase = await prepareScopedPointDelta({
     scopeKey: "INVITE_CODE_PURCHASE",
@@ -32,6 +33,7 @@ export async function purchaseInviteCodeTransaction(params: {
         code: params.code,
         createdById: latestUser.id,
         note: "积分购买",
+        expiresAt: params.expiresAt,
       },
     })
 

@@ -269,6 +269,15 @@ export function AdminRegistrationSettingsForm({
             <AdminBooleanSelectField label="注册必须邀请码" checked={draft.registrationRequireInviteCode} onChange={(value) => updateDraftField("registrationRequireInviteCode", value)} />
             <AdminBooleanSelectField label="开启积分购买邀请码" checked={draft.inviteCodePurchaseEnabled} onChange={(value) => updateDraftField("inviteCodePurchaseEnabled", value)} />
           </div>
+          {draft.inviteCodePurchaseEnabled ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <TextField label="每日最多购买邀请码数量" value={draft.inviteCodePurchaseDailyLimit} onChange={(value) => updateDraftField("inviteCodePurchaseDailyLimit", value)} placeholder="0 表示不限制" />
+              <TextField label="购买后有效天数" value={draft.inviteCodeValidityDays} onChange={(value) => updateDraftField("inviteCodeValidityDays", value)} placeholder="1 表示当天有效" />
+              <div className="rounded-xl border border-dashed border-border bg-card/60 px-4 py-3 text-xs leading-6 text-muted-foreground">
+                购买的邀请码超过有效期未使用会失效，已扣除的积分不退还。有效天数填 1 时，仅当天有效。
+              </div>
+            </div>
+          ) : null}
           {draft.registerInviteCodeEnabled ? (
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <AdminBooleanSelectField label="邀请码输入框链接开关" checked={draft.registerInviteCodeHelpEnabled} onChange={(value) => updateDraftField("registerInviteCodeHelpEnabled", value)} />

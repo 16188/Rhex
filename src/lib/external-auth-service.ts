@@ -165,6 +165,10 @@ async function createUserFromIdentity(input: {
         apiError(409, "邀请码已被使用")
       }
 
+      if (foundCode.expiresAt && foundCode.expiresAt.getTime() <= Date.now()) {
+        apiError(410, "邀请码已失效")
+      }
+
       inviteCodeRecord = { id: foundCode.id, code: foundCode.code }
 
       if (foundCode.createdBy) {

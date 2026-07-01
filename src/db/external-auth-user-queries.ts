@@ -113,6 +113,7 @@ export function findInviteCodeRegistrationContext(code: string, client?: DbClien
       id: true,
       code: true,
       usedById: true,
+      expiresAt: true,
       createdBy: {
         select: {
           id: true,

@@ -16,6 +16,7 @@ export interface AdminBasicSettingsInviteCodeItem {
   id: string
   code: string
   createdAt: string
+  expiresAt: string | null
   createdByUsername: string | null
   usedAt: string | null
   usedByUsername: string | null

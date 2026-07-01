@@ -43,6 +43,8 @@ export function InviteSettingsSection({ data }: { data: SettingsPageData }) {
           price={inviteCodePrice}
           priceDescription={inviteCodePriceDescription}
           pointName={settings.pointName}
+          dailyLimit={settings.inviteCodePurchaseDailyLimit}
+          validityDays={settings.inviteCodeValidityDays}
         />
       </CardContent>
     </Card>

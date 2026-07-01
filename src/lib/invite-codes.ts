@@ -1,8 +1,9 @@
 import { randomBytes } from "crypto"
 
-import { countInviteCodesByCreator, createInviteCodesBatch, deleteInviteCodeById, deleteInviteCodesByScope, findInviteCodeByCode, findInviteCodeForUse, findInviteCodeList, findInviteCodesByCodes, findInviteCodesByCreator, findInvitePurchaseUser, findUserInviteResolverById, findUserInviteResolverByUsername } from "@/db/invite-code-queries"
+import { countInviteCodesByCreator, countPurchasedInviteCodesByCreatorInRange, createInviteCodesBatch, deleteInviteCodeById, deleteInviteCodesByScope, findInviteCodeByCode, findInviteCodeForUse, findInviteCodeList, findInviteCodesByCodes, findInviteCodesByCreator, findInvitePurchaseUser, findUserInviteResolverById, findUserInviteResolverByUsername } from "@/db/invite-code-queries"
 import { purchaseInviteCodeTransaction } from "@/db/invite-code-write-queries"
 import { apiError } from "@/lib/api-route"
+import { getBusinessDayRange } from "@/lib/formatters"
 import { getSiteSettings } from "@/lib/site-settings"
 import { getVipLevel, isVipActive } from "@/lib/vip-status"
 
@@ -16,6 +17,7 @@ export interface InviteCodeItem {
   id: string
   code: string
   createdAt: string
+  expiresAt: string | null
   createdByUsername: string | null
   usedAt: string | null
   usedByUsername: string | null
@@ -27,6 +29,7 @@ export interface InviteCodePageData {
     id: string
     code: string
     createdAt: string
+    expiresAt: string | null
     usedAt: string | null
     usedByUsername: string | null
   }>
@@ -49,6 +52,22 @@ function randomInviteCode(length = DEFAULT_CODE_LENGTH) {
   }
 
   return code
+}
+
+function isInviteCodeExpired(expiresAt?: Date | string | null, now = new Date()) {
+  if (!expiresAt) {
+    return false
+  }
+
+  return new Date(expiresAt).getTime() <= now.getTime()
+}
+
+function resolvePurchasedInviteCodeExpiresAt(validityDays: number, now = new Date()) {
+  const { end } = getBusinessDayRange(now)
+  const normalizedDays = Math.max(1, Math.trunc(validityDays))
+  const expiresAt = new Date(end)
+  expiresAt.setDate(expiresAt.getDate() + normalizedDays - 1)
+  return expiresAt
 }
 
 export async function generateUniqueInviteCode(length = DEFAULT_CODE_LENGTH) {
@@ -90,6 +109,7 @@ export async function getInviteCodeList(limit = 100): Promise<InviteCodeItem[]> 
     id: row.id,
     code: row.code,
     createdAt: row.createdAt.toISOString(),
+    expiresAt: row.expiresAt?.toISOString() ?? null,
     createdByUsername: row.createdBy?.username ?? null,
     usedAt: row.usedAt?.toISOString() ?? null,
     usedByUsername: row.usedBy?.username ?? null,
@@ -125,6 +145,7 @@ export async function getPurchasedInviteCodePage(userId: number, options?: { pag
       id: row.id,
       code: row.code,
       createdAt: row.createdAt.toISOString(),
+      expiresAt: row.expiresAt?.toISOString() ?? null,
       usedAt: row.usedAt?.toISOString() ?? null,
       usedByUsername: row.usedBy?.username ?? null,
     })),
@@ -162,6 +183,10 @@ export async function resolveInviter(input: { inviterUsername?: string; inviteCo
 
     if (foundCode.usedById) {
       apiError(409, "邀请码已被使用")
+    }
+
+    if (isInviteCodeExpired(foundCode.expiresAt)) {
+      apiError(410, "邀请码已失效")
     }
 
     inviteCodeRecord = { id: foundCode.id, code: foundCode.code, createdById: foundCode.createdById }
@@ -219,13 +244,24 @@ export async function purchaseInviteCode(userId: number) {
   }
 
 
+  const { start, end } = getBusinessDayRange()
+  const dailyLimit = Math.max(0, settings.inviteCodePurchaseDailyLimit)
+  if (dailyLimit > 0) {
+    const todayPurchasedCount = await countPurchasedInviteCodesByCreatorInRange(userId, start, end)
+    if (todayPurchasedCount >= dailyLimit) {
+      apiError(429, `今天最多可购买 ${dailyLimit} 个邀请码，已达到上限`)
+    }
+  }
+
   const code = await generateUniqueInviteCode()
+  const expiresAt = resolvePurchasedInviteCodeExpiresAt(settings.inviteCodeValidityDays)
 
   return purchaseInviteCodeTransaction({
     userId,
     price,
     pointName: settings.pointName,
     code,
+    expiresAt,
   })
 
 }

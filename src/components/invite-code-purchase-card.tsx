@@ -17,6 +17,8 @@ interface InviteCodePurchaseCardProps {
   price: number
   priceDescription?: string
   pointName: string
+  dailyLimit: number
+  validityDays: number
 }
 
 interface InviteCodeHistoryPageData {
@@ -24,6 +26,7 @@ interface InviteCodeHistoryPageData {
     id: string
     code: string
     createdAt: string
+    expiresAt: string | null
     usedAt: string | null
     usedByUsername: string | null
   }>
@@ -62,11 +65,12 @@ function buildPageTokens(page: number, totalPages: number): PaginationToken[] {
   return result
 }
 
-export function InviteCodePurchaseCard({ enabled, price, priceDescription, pointName }: InviteCodePurchaseCardProps) {
+export function InviteCodePurchaseCard({ enabled, price, priceDescription, pointName, dailyLimit, validityDays }: InviteCodePurchaseCardProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [latestBalance, setLatestBalance] = useState<number | null>(null)
   const [latestCode, setLatestCode] = useState("")
+  const [latestExpiresAt, setLatestExpiresAt] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [historyError, setHistoryError] = useState("")
@@ -98,6 +102,7 @@ export function InviteCodePurchaseCard({ enabled, price, priceDescription, point
   async function handlePurchase() {
     setLoading(true)
     setLatestCode("")
+    setLatestExpiresAt(null)
 
     try {
       const response = await fetch("/api/invite-codes/purchase", {
@@ -112,6 +117,7 @@ export function InviteCodePurchaseCard({ enabled, price, priceDescription, point
 
       const code = typeof result?.data?.code === "string" ? result.data.code : ""
       setLatestCode(code)
+      setLatestExpiresAt(typeof result?.data?.expiresAt === "string" ? result.data.expiresAt : null)
       setLatestBalance(typeof result?.data?.balance === "number" ? result.data.balance : null)
       toast.success(typeof result?.message === "string" ? result.message : "邀请码购买成功", "购买成功")
       router.refresh()
@@ -142,6 +148,10 @@ export function InviteCodePurchaseCard({ enabled, price, priceDescription, point
           <p className="font-medium">购买邀请码</p>
           <p className="mt-1 text-sm text-muted-foreground">每个邀请码售价 {formatNumber(price)} {pointName}，购买后可分享给好友注册使用。</p>
           {priceDescription ? <p className="mt-1 text-xs text-muted-foreground">{priceDescription}</p> : null}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {dailyLimit > 0 ? `每天最多购买 ${formatNumber(dailyLimit)} 个；` : "每天购买数量不限；"}
+            有效期 {Math.max(1, validityDays)} 天，过期未使用不退还{pointName}。
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
@@ -154,9 +164,10 @@ export function InviteCodePurchaseCard({ enabled, price, priceDescription, point
         </div>
 
         {latestCode ? (
-          <p className="text-sm">
-            最新邀请码：<span className="font-mono font-semibold">{latestCode}</span>
-          </p>
+          <div className="text-sm">
+            <p>最新邀请码：<span className="font-mono font-semibold">{latestCode}</span></p>
+            {latestExpiresAt ? <p className="mt-1 text-xs text-muted-foreground">有效至 {formatDateTime(latestExpiresAt)}，过期未使用不退还{pointName}。</p> : null}
+          </div>
         ) : null}
         {latestBalance !== null ? (
           <p className="text-sm text-muted-foreground">当前余额已更新为 <span className="font-semibold text-foreground">{formatNumber(latestBalance)}</span> {pointName}</p>
@@ -210,14 +221,15 @@ export function InviteCodePurchaseCard({ enabled, price, priceDescription, point
                       <p className="font-mono text-base font-semibold tracking-[0.16em]">{item.code}</p>
                       <p className="mt-1 text-xs text-muted-foreground">购买于 {formatDateTime(item.createdAt)}</p>
                     </div>
-                    <span className={item.usedByUsername ? "rounded-full bg-secondary px-3 py-1 text-xs text-foreground" : "rounded-full border border-dashed border-border px-3 py-1 text-xs text-muted-foreground"}>
-                      {item.usedByUsername ? "已使用" : "未使用"}
+                    <span className={item.usedByUsername ? "rounded-full bg-secondary px-3 py-1 text-xs text-foreground" : item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now() ? "rounded-full bg-destructive/10 px-3 py-1 text-xs text-destructive" : "rounded-full border border-dashed border-border px-3 py-1 text-xs text-muted-foreground"}>
+                      {item.usedByUsername ? "已使用" : item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now() ? "已过期" : "未使用"}
                     </span>
                   </div>
 
                   <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
                     <p>使用用户：{item.usedByUsername ? `@${item.usedByUsername}` : "暂无"}</p>
                     <p>使用时间：{item.usedAt ? formatDateTime(item.usedAt) : "未使用"}</p>
+                    <p>有效期至：{item.expiresAt ? formatDateTime(item.expiresAt) : "长期有效"}</p>
                   </div>
                 </div>
               ))}

@@ -36,7 +36,7 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
     })
 
     revalidateUserSurfaceCache(currentUser.id)
-    return apiSuccess({ code: inviteCode.code, balance: inviteCode.balance }, "邀请码购买成功")
+    return apiSuccess({ code: inviteCode.code, balance: inviteCode.balance, expiresAt: inviteCode.expiresAt?.toISOString?.() ?? null }, "邀请码购买成功")
   })
 }, {
   errorMessage: "邀请码购买失败",

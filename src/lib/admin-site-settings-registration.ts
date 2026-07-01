@@ -7,6 +7,7 @@ import {
   mergeAuthPageShowcaseSettings,
   mergeAuthProviderSettings,
   mergeRegisterInviteCodeHelpSettings,
+  mergeInviteCodePurchaseRuleSettings,
   mergeRegisterNicknameLengthSettings,
   mergeRegisterPasswordPolicySettings,
   mergeRegistrationEmailTemplateSettings,
@@ -16,6 +17,7 @@ import {
   mergeSmsProviderSettings,
   mergeUsernameSensitiveWordSettings,
   resolveRegisterInviteCodeHelpSettings,
+  resolveInviteCodePurchaseRuleSettings,
   resolveRegisterEmailWhitelistSettings,
   resolveRegistrationEmailTemplateSettings,
   resolveRegisterNicknameLengthSettings,
@@ -57,6 +59,9 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
   const existingRegisterInviteCodeHelpSettings = resolveRegisterInviteCodeHelpSettings({
     appStateJson: existing.appStateJson,
   })
+  const existingInviteCodePurchaseRuleSettings = resolveInviteCodePurchaseRuleSettings({
+    appStateJson: existing.appStateJson,
+  })
   const existingRegisterEmailWhitelistSettings = resolveRegisterEmailWhitelistSettings({
     appStateJson: existing.appStateJson,
   })
@@ -79,6 +84,8 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
   const registerInviteCodeHelpTitle = readOptionalStringField(body, "registerInviteCodeHelpTitle") || existingRegisterInviteCodeHelpSettings.title
   const registerInviteCodeHelpUrl = readOptionalStringField(body, "registerInviteCodeHelpUrl") || existingRegisterInviteCodeHelpSettings.url
   const inviteCodePurchaseEnabled = Boolean(body.inviteCodePurchaseEnabled)
+  const inviteCodePurchaseDailyLimit = Math.max(0, readOptionalNumberField(body, "inviteCodePurchaseDailyLimit") ?? existingInviteCodePurchaseRuleSettings.dailyLimit)
+  const inviteCodeValidityDays = Math.max(1, readOptionalNumberField(body, "inviteCodeValidityDays") ?? existingInviteCodePurchaseRuleSettings.validityDays)
   const registerCaptchaMode = normalizeCaptchaMode(body.registerCaptchaMode)
   const loginCaptchaMode = normalizeCaptchaMode(body.loginCaptchaMode)
   const turnstileSiteKey = readOptionalStringField(body, "turnstileSiteKey") || null
@@ -275,7 +282,11 @@ export async function updateRegistrationSiteSettingsSection(existing: SiteSettin
     title: registerInviteCodeHelpTitle,
     url: registerInviteCodeHelpUrl,
   })
-  const appStateWithSiteSecurity = mergeSiteSecuritySettings(appStateWithRegisterInviteCodeHelp, {
+  const appStateWithInviteCodePurchaseRules = mergeInviteCodePurchaseRuleSettings(appStateWithRegisterInviteCodeHelp, {
+    dailyLimit: inviteCodePurchaseDailyLimit,
+    validityDays: inviteCodeValidityDays,
+  })
+  const appStateWithSiteSecurity = mergeSiteSecuritySettings(appStateWithInviteCodePurchaseRules, {
     sessionIpMismatchLogoutEnabled,
     loginIpChangeEmailAlertEnabled,
     passwordChangeRequireEmailVerification,

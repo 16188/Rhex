@@ -29,6 +29,7 @@ import type {
   CheckInStreakSettings,
   IntroductionChangePointCostSettings,
   InviteCodePurchasePriceSettings,
+  InviteCodePurchaseRuleSettings,
   NicknameChangePointCostSettings,
   RedeemCodeHelpSettings,
   RegisterEmailWhitelistSettings,
@@ -284,6 +285,35 @@ export function mergeInviteCodePurchasePriceSettings(
       vip1: normalizeNonNegativeInteger(input.vip1, 0),
       vip2: normalizeNonNegativeInteger(input.vip2, 0),
       vip3: normalizeNonNegativeInteger(input.vip3, 0),
+    },
+  })
+}
+
+export function resolveInviteCodePurchaseRuleSettings(options: {
+  appStateJson?: string | null
+} = {}): InviteCodePurchaseRuleSettings {
+  const siteSettingsState = readSiteSettingsState(options.appStateJson)
+  const inviteCodePurchaseRules = isRecord(siteSettingsState.inviteCodePurchaseRules)
+    ? siteSettingsState.inviteCodePurchaseRules
+    : {}
+
+  return {
+    dailyLimit: normalizeNonNegativeInteger(inviteCodePurchaseRules.dailyLimit, 0),
+    validityDays: Math.max(1, normalizeNonNegativeInteger(inviteCodePurchaseRules.validityDays, 1)),
+  }
+}
+
+export function mergeInviteCodePurchaseRuleSettings(
+  appStateJson: string | null | undefined,
+  input: InviteCodePurchaseRuleSettings,
+) {
+  const siteSettingsState = readSiteSettingsState(appStateJson)
+
+  return writeSiteSettingsState(appStateJson, {
+    ...siteSettingsState,
+    inviteCodePurchaseRules: {
+      dailyLimit: normalizeNonNegativeInteger(input.dailyLimit, 0),
+      validityDays: Math.max(1, normalizeNonNegativeInteger(input.validityDays, 1)),
     },
   })
 }

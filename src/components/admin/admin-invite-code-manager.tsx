@@ -13,6 +13,7 @@ interface AdminInviteCodeManagerProps {
     id: string
     code: string
     createdAt: string
+    expiresAt: string | null
     createdByUsername: string | null
     usedAt: string | null
     usedByUsername: string | null
@@ -31,9 +32,9 @@ export function AdminInviteCodeManager({ initialInviteCodes }: AdminInviteCodeMa
 
   const summary = useMemo(() => ({
     total: inviteCodes.length,
-    unused: inviteCodes.filter((item) => !item.usedAt).length,
+    unused: inviteCodes.filter((item) => !item.usedAt && (!item.expiresAt || new Date(item.expiresAt).getTime() > Date.now())).length,
     used: inviteCodes.filter((item) => item.usedAt).length,
-    manual: inviteCodes.filter((item) => item.createdByUsername).length,
+    expired: inviteCodes.filter((item) => !item.usedAt && item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now()).length,
   }), [inviteCodes])
 
   async function reloadInviteCodes() {
@@ -115,7 +116,7 @@ export function AdminInviteCodeManager({ initialInviteCodes }: AdminInviteCodeMa
         <Stat title="邀请码总数" value={summary.total} />
         <Stat title="未使用" value={summary.unused} />
         <Stat title="已使用" value={summary.used} />
-        <Stat title="人工生成" value={summary.manual} />
+        <Stat title="已过期" value={summary.expired} />
       </div>
 
       <div className="rounded-xl border border-border bg-card p-4 space-y-4">
@@ -153,9 +154,10 @@ export function AdminInviteCodeManager({ initialInviteCodes }: AdminInviteCodeMa
             <div className="min-w-0">
               <div className="truncate font-mono text-sm font-medium">{item.code}</div>
               <div className="mt-1 text-muted-foreground">{formatDateTime(item.createdAt)}</div>
+              <div className="mt-1 text-muted-foreground">有效期：{item.expiresAt ? formatDateTime(item.expiresAt) : "长期有效"}</div>
             </div>
             <div className="truncate text-muted-foreground">{item.createdByUsername ?? "系统"}</div>
-            <div className="text-muted-foreground">{item.usedAt ? item.usedByUsername ? `已被 ${item.usedByUsername} 使用` : "已使用" : "未使用"}</div>
+            <div className="text-muted-foreground">{item.usedAt ? item.usedByUsername ? `已被 ${item.usedByUsername} 使用` : "已使用" : item.expiresAt && new Date(item.expiresAt).getTime() <= Date.now() ? "已过期" : "未使用"}</div>
             <div className="truncate text-muted-foreground">{item.note ?? "-"}</div>
             <div>
               <Button type="button" variant="destructive" size="icon-sm" title="删除邀请码" aria-label={`删除邀请码 ${item.code}`} onClick={() => void handleDeleteInviteCodes("single", item.id)} disabled={isPending}>

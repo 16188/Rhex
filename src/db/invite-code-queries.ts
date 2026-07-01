@@ -50,6 +50,20 @@ export function countInviteCodesByCreator(userId: number) {
   return prisma.inviteCode.count({
     where: {
       createdById: userId,
+      note: "积分购买",
+    },
+  })
+}
+
+export function countPurchasedInviteCodesByCreatorInRange(userId: number, start: Date, end: Date) {
+  return prisma.inviteCode.count({
+    where: {
+      createdById: userId,
+      note: "积分购买",
+      createdAt: {
+        gte: start,
+        lt: end,
+      },
     },
   })
 }
@@ -61,6 +75,7 @@ export function findInviteCodesByCreator(userId: number, options: { page: number
   return prisma.inviteCode.findMany({
     where: {
       createdById: userId,
+      note: "积分购买",
     },
     orderBy: { createdAt: "desc" },
     skip: (page - 1) * pageSize,
@@ -69,6 +84,7 @@ export function findInviteCodesByCreator(userId: number, options: { page: number
       id: true,
       code: true,
       createdAt: true,
+      expiresAt: true,
       usedAt: true,
       usedBy: {
         select: {
@@ -82,7 +98,7 @@ export function findInviteCodesByCreator(userId: number, options: { page: number
 export function findInviteCodeForUse(code: string) {
   return prisma.inviteCode.findUnique({
     where: { code },
-    select: { id: true, code: true, createdById: true, usedById: true },
+    select: { id: true, code: true, createdById: true, usedById: true, expiresAt: true },
   })
 }
 

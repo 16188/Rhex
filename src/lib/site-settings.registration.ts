@@ -12,6 +12,8 @@ export interface SiteSettingsRegistrationData extends UsernameSensitiveWordSetti
   registerInviteCodeHelpTitle: string
   registerInviteCodeHelpUrl: string
   inviteCodePurchaseEnabled: boolean
+  inviteCodePurchaseDailyLimit: number
+  inviteCodeValidityDays: number
   boardApplicationEnabled: boolean
   inviteCodePrice: number
   registerCaptchaMode: "OFF" | "TURNSTILE" | "BUILTIN" | "POW"
