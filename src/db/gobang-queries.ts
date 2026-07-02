@@ -1,4 +1,4 @@
-import { type Prisma, type PrismaClient } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
 
 import { prisma } from "@/db/client"
 
@@ -50,28 +50,27 @@ function mapGobangMatchRow(match: {
   } satisfies GobangMatchRow
 }
 
-export async function countGobangMatchesInRange(userId: number, start: Date, end: Date) {
-  const [total, paid] = await Promise.all([
-    prisma.gobangMatch.count({
-      where: {
-        creatorId: userId,
-        createdAt: {
-          gte: start,
-          lt: end,
-        },
+export async function countGobangMatchesInRange(userId: number, start: Date, end: Date, client?: GobangQueryClient) {
+  const db = resolveClient(client)
+  const total = await db.gobangMatch.count({
+    where: {
+      creatorId: userId,
+      createdAt: {
+        gte: start,
+        lt: end,
       },
-    }),
-    prisma.gobangMatch.count({
-      where: {
-        creatorId: userId,
-        ticketCost: { gt: 0 },
-        createdAt: {
-          gte: start,
-          lt: end,
-        },
+    },
+  })
+  const paid = await db.gobangMatch.count({
+    where: {
+      creatorId: userId,
+      ticketCost: { gt: 0 },
+      createdAt: {
+        gte: start,
+        lt: end,
       },
-    }),
-  ])
+    },
+  })
 
   return { total, paid }
 }
@@ -101,6 +100,14 @@ export async function createGobangMatchRecord(params: {
 }
 
 export const insertGobangMatch = createGobangMatchRecord
+
+export async function lockGobangMatchRow(matchId: string, client: GobangQueryClient) {
+  await client.$queryRaw`SELECT id FROM "GobangMatch" WHERE id = ${matchId} FOR UPDATE`
+}
+
+export async function lockGobangUserRow(userId: number, client: GobangQueryClient) {
+  await client.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`
+}
 
 export async function insertGobangMove(params: {
   id: string
@@ -171,16 +178,16 @@ export async function listGobangMovesByMatchIds(matchIds: string[]) {
   })
 }
 
-export async function getGobangMatchRow(matchId: string) {
-  const match = await prisma.gobangMatch.findUnique({
+export async function getGobangMatchRow(matchId: string, client?: GobangQueryClient) {
+  const match = await resolveClient(client).gobangMatch.findUnique({
     where: { id: matchId },
   })
 
   return match ? mapGobangMatchRow(match) : null
 }
 
-export async function getGobangMoves(matchId: string) {
-  return prisma.gobangMove.findMany({
+export async function getGobangMoves(matchId: string, client?: GobangQueryClient) {
+  return resolveClient(client).gobangMove.findMany({
     where: { matchId },
     orderBy: {
       step: "asc",
@@ -188,8 +195,8 @@ export async function getGobangMoves(matchId: string) {
   })
 }
 
-export async function updateGobangMatchTimestamp(matchId: string, updatedAt: Date) {
-  await prisma.gobangMatch.update({
+export async function updateGobangMatchTimestamp(matchId: string, updatedAt: Date, client?: GobangQueryClient) {
+  await resolveClient(client).gobangMatch.update({
     where: { id: matchId },
     data: { updatedAt },
   })
@@ -226,7 +233,9 @@ export function findGobangUserPoints(userId: number, client?: GobangQueryClient)
 export function runGobangTransaction<T>(
   callback: (tx: Prisma.TransactionClient) => Promise<T>,
 ) {
-  return prisma.$transaction(callback)
+  return prisma.$transaction(callback, {
+    isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+  })
 }
 
 

@@ -1,9 +1,10 @@
-import { randomUUID } from "node:crypto"
+import { randomInt, randomUUID } from "node:crypto"
+import type { Prisma } from "@prisma/client"
 
 export { GobangPage } from "@/components/gobang-page"
 export { GobangAdminPage } from "@/components/admin/gobang-admin-page"
 
-import { countGobangMatchesInRange, createGobangMatchRecord, findGobangUserPoints, finishGobangMatch, finishGobangMatchNow, getGobangMatchRow, getGobangMoves, insertGobangMove, insertGobangMoveNow, listGobangMatchRows, listGobangMovesByMatchIds, runGobangTransaction, type GobangMatchRow, type GobangMoveRow, updateGobangMatchTimestamp } from "@/db/gobang-queries"
+import { countGobangMatchesInRange, createGobangMatchRecord, findGobangUserPoints, finishGobangMatch, finishGobangMatchNow, getGobangMatchRow, getGobangMoves, insertGobangMove, insertGobangMoveNow, listGobangMatchRows, listGobangMovesByMatchIds, lockGobangMatchRow, lockGobangUserRow, runGobangTransaction, type GobangMatchRow, type GobangMoveRow, updateGobangMatchTimestamp } from "@/db/gobang-queries"
 
 
 import { getGobangAppConfig } from "@/lib/app-config"
@@ -24,11 +25,23 @@ const DEFAULT_DAILY_NORMAL_GAME_LIMIT = 3
 const DEFAULT_DAILY_VIP_GAME_LIMIT = 5
 const DEFAULT_TICKET_COST = 50
 const DEFAULT_WIN_REWARD = 50
+const MAX_DAILY_GAMES = 50
+const MAX_POINT_AMOUNT = 100000
 const DIRECTIONS = [
   [1, 0],
   [0, 1],
   [1, 1],
   [1, -1],
+] as const
+const HARD_AI_VARIATION_RATIO = 0.018
+const HARD_AI_VARIATION_MIN_SCORE = 80
+const HARD_AI_VARIATION_MAX_CANDIDATES = 4
+const HARD_AI_OPENING_MOVES = [
+  { x: 7, y: 7 },
+  { x: 7, y: 6 },
+  { x: 8, y: 7 },
+  { x: 7, y: 8 },
+  { x: 6, y: 7 },
 ] as const
 
 type GobangStatus = "ONGOING" | "FINISHED"
@@ -74,7 +87,11 @@ type CurrentUser = {
 
 function normalizePluginNumber(value: boolean | number | string | undefined, fallback: number) {
   const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : fallback
+  return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback
+}
+
+function clampPluginNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value))
 }
 
 function buildBoard(moves: GobangMoveRow[]) {
@@ -195,7 +212,158 @@ function scoreCell(board: number[][], x: number, y: number, aiLevel: number) {
   return Math.round((aiPatternScore * 1.2 + playerPatternScore * (aiLevel >= 2 ? 1.1 : 0.8) + centerBias * difficultyMultiplier) * 10)
 }
 
+function getCenterBias(x: number, y: number) {
+  return BOARD_SIZE - (Math.abs(7 - x) + Math.abs(7 - y))
+}
+
+function getCandidateMoves(board: number[][], radius = 2) {
+  const candidates = new Map<string, { x: number; y: number }>()
+  let hasStones = false
+
+  for (let y = 0; y < BOARD_SIZE; y += 1) {
+    for (let x = 0; x < BOARD_SIZE; x += 1) {
+      if (board[y][x] === 0) {
+        continue
+      }
+
+      hasStones = true
+      for (let dy = -radius; dy <= radius; dy += 1) {
+        for (let dx = -radius; dx <= radius; dx += 1) {
+          const nextX = x + dx
+          const nextY = y + dy
+          if (nextX >= 0 && nextX < BOARD_SIZE && nextY >= 0 && nextY < BOARD_SIZE && board[nextY][nextX] === 0) {
+            candidates.set(`${nextX}:${nextY}`, { x: nextX, y: nextY })
+          }
+        }
+      }
+    }
+  }
+
+  if (!hasStones) {
+    return [...HARD_AI_OPENING_MOVES]
+  }
+
+  return [...candidates.values()].sort((left, right) => getCenterBias(right.x, right.y) - getCenterBias(left.x, left.y))
+}
+
+function scoreMarkerPotential(board: number[][], x: number, y: number, marker: number) {
+  if (board[y][x] !== 0) {
+    return 0
+  }
+
+  board[y][x] = marker
+  const score = evaluatePattern(board, x, y, marker)
+  board[y][x] = 0
+
+  return score
+}
+
+function countImmediateWinningMoves(board: number[][], marker: number) {
+  return getCandidateMoves(board, 1).filter((move) => {
+    board[move.y][move.x] = marker
+    const winning = isWinningMove(board, move.x, move.y, marker)
+    board[move.y][move.x] = 0
+
+    return winning
+  }).length
+}
+
+function getBestPotentialScore(board: number[][], marker: number) {
+  return getCandidateMoves(board, 2)
+    .map((move) => scoreMarkerPotential(board, move.x, move.y, marker))
+    .sort((left, right) => right - left)
+    .slice(0, 6)
+    .reduce((sum, score, index) => sum + score / (index + 1), 0)
+}
+
+function scoreHardCell(board: number[][], x: number, y: number) {
+  if (board[y][x] !== 0) {
+    return Number.NEGATIVE_INFINITY
+  }
+
+  board[y][x] = AI_MARKER
+
+  if (isWinningMove(board, x, y, AI_MARKER)) {
+    const score = 1_000_000_000 + getCenterBias(x, y)
+    board[y][x] = 0
+    return score
+  }
+
+  const playerImmediateWins = countImmediateWinningMoves(board, PLAYER_MARKER)
+  const aiImmediateWins = countImmediateWinningMoves(board, AI_MARKER)
+  const aiPotential = getBestPotentialScore(board, AI_MARKER)
+  const playerPotential = getBestPotentialScore(board, PLAYER_MARKER)
+  const playerBestReply = getCandidateMoves(board, 2).reduce((best, move) => {
+    board[move.y][move.x] = PLAYER_MARKER
+    const replyScore = isWinningMove(board, move.x, move.y, PLAYER_MARKER)
+      ? 1_000_000
+      : getBestPotentialScore(board, PLAYER_MARKER)
+    board[move.y][move.x] = 0
+
+    return Math.max(best, replyScore)
+  }, 0)
+
+  board[y][x] = 0
+
+  return Math.round(
+    aiPotential * 1.45
+    - playerPotential * 1.35
+    - playerBestReply * 0.45
+    + aiImmediateWins * 300_000
+    - playerImmediateWins * 2_000_000
+    + getCenterBias(x, y) * 12,
+  )
+}
+
+function pickRandomCandidate<T>(items: T[]) {
+  if (items.length <= 1) {
+    return items[0]
+  }
+
+  return items[randomInt(items.length)]
+}
+
+function hasBoardStone(board: number[][]) {
+  return board.some((row) => row.some((cell) => cell !== 0))
+}
+
+function chooseVariedHardAiMove(board: number[][]) {
+  if (!hasBoardStone(board)) {
+    return {
+      ...(pickRandomCandidate([...HARD_AI_OPENING_MOVES]) ?? { x: 7, y: 7 }),
+      score: 0,
+    }
+  }
+
+  const scoredMoves = getCandidateMoves(board, 2)
+    .map((move) => ({
+      ...move,
+      score: scoreHardCell(board, move.x, move.y),
+    }))
+    .sort((left, right) => right.score - left.score)
+
+  const bestMove = scoredMoves[0]
+  if (!bestMove) {
+    return { x: 7, y: 7, score: Number.NEGATIVE_INFINITY }
+  }
+
+  const tolerance = Math.max(
+    HARD_AI_VARIATION_MIN_SCORE,
+    Math.abs(bestMove.score) * HARD_AI_VARIATION_RATIO,
+  )
+  const nearBestMoves = scoredMoves
+    .filter((move) => bestMove.score - move.score <= tolerance)
+    .slice(0, HARD_AI_VARIATION_MAX_CANDIDATES)
+  const selectedMove = pickRandomCandidate(nearBestMoves) ?? bestMove
+
+  return selectedMove
+}
+
 function chooseAiMove(board: number[][], aiLevel: number) {
+  if (aiLevel >= 3) {
+    return chooseVariedHardAiMove(board)
+  }
+
   let best = { x: 7, y: 7, score: -1 }
 
   for (let y = 0; y < BOARD_SIZE; y += 1) {
@@ -259,20 +427,20 @@ async function getGobangPluginConfig() {
   const config = await getGobangAppConfig()
 
   return {
-    aiLevel: normalizePluginNumber(config.aiLevel, 2),
+    aiLevel: clampPluginNumber(normalizePluginNumber(config.aiLevel, 2), 1, 3),
     matchLabel: String(config.matchLabel ?? "五子棋人机对战"),
-    dailyFreeGames: normalizePluginNumber(config.dailyFreeGames, DEFAULT_DAILY_FREE_GAMES),
-    dailyVipFreeGames: normalizePluginNumber(config.dailyVipFreeGames, DEFAULT_DAILY_VIP_FREE_GAMES),
-    dailyNormalGameLimit: normalizePluginNumber(config.dailyNormalGameLimit, DEFAULT_DAILY_NORMAL_GAME_LIMIT),
-    dailyVipGameLimit: normalizePluginNumber(config.dailyVipGameLimit, DEFAULT_DAILY_VIP_GAME_LIMIT),
-    ticketCost: normalizePluginNumber(config.ticketCost, DEFAULT_TICKET_COST),
-    winReward: normalizePluginNumber(config.winReward, DEFAULT_WIN_REWARD),
+    dailyFreeGames: clampPluginNumber(normalizePluginNumber(config.dailyFreeGames, DEFAULT_DAILY_FREE_GAMES), 0, MAX_DAILY_GAMES),
+    dailyVipFreeGames: clampPluginNumber(normalizePluginNumber(config.dailyVipFreeGames, DEFAULT_DAILY_VIP_FREE_GAMES), 0, MAX_DAILY_GAMES),
+    dailyNormalGameLimit: clampPluginNumber(normalizePluginNumber(config.dailyNormalGameLimit, DEFAULT_DAILY_NORMAL_GAME_LIMIT), 0, MAX_DAILY_GAMES),
+    dailyVipGameLimit: clampPluginNumber(normalizePluginNumber(config.dailyVipGameLimit, DEFAULT_DAILY_VIP_GAME_LIMIT), 0, MAX_DAILY_GAMES),
+    ticketCost: clampPluginNumber(normalizePluginNumber(config.ticketCost, DEFAULT_TICKET_COST), 0, MAX_POINT_AMOUNT),
+    winReward: clampPluginNumber(normalizePluginNumber(config.winReward, DEFAULT_WIN_REWARD), 0, MAX_POINT_AMOUNT),
   }
 }
 
-async function countTodayMatches(userId: number) {
+async function countTodayMatches(userId: number, client?: Prisma.TransactionClient) {
   const { start, end } = getBusinessDayRange()
-  return countGobangMatchesInRange(userId, start, end)
+  return countGobangMatchesInRange(userId, start, end, client)
 }
 
 
@@ -365,63 +533,66 @@ export async function getGobangPlayerSummary(user: CurrentUser): Promise<GobangP
   }
 }
 
-async function creditUserPoints(userId: number, amount: number, reason: string) {
+async function creditUserPointsInTransaction(
+  tx: Prisma.TransactionClient,
+  userId: number,
+  amount: number,
+  reason: string,
+  pointName: string,
+) {
   if (amount <= 0) {
     return
   }
 
-  const [settings, preparedReward] = await Promise.all([
-    getSiteSettings(),
-    prepareScopedPointDelta({
-      scopeKey: "GOBANG_WAGER_INCOMING",
-      baseDelta: amount,
-      userId,
-    }),
-  ])
+  const preparedReward = await prepareScopedPointDelta({
+    scopeKey: "GOBANG_WAGER_INCOMING",
+    baseDelta: amount,
+    userId,
+  })
+  const user = await findGobangUserPoints(userId, tx)
 
-  await runGobangTransaction(async (tx) => {
-    const user = await findGobangUserPoints(userId, tx)
-
-    if (!user) {
+  if (!user) {
       throw new Error("用户不存在")
-    }
+  }
 
-    await applyPointDelta({
-      tx,
-      userId,
-      beforeBalance: user.points,
-      prepared: preparedReward,
-      pointName: settings.pointName,
-      reason,
-    })
+  await applyPointDelta({
+    tx,
+    userId,
+    beforeBalance: user.points,
+    prepared: preparedReward,
+    pointName,
+    reason,
   })
 }
 
 export async function createGobangMatch(user: CurrentUser) {
-  const [config, todayCounts, settings] = await Promise.all([
+  const [config, settings] = await Promise.all([
     getGobangPluginConfig(),
-    countTodayMatches(user.id),
     getSiteSettings(),
   ])
-  const policy = resolveChallengePolicy(user, todayCounts, config)
-  const preparedTicketCost = policy.ticketCost > 0
+  const preparedTicketCost = config.ticketCost > 0
     ? await prepareScopedPointDelta({
         scopeKey: "GOBANG_WAGER_OUTGOING",
-        baseDelta: -policy.ticketCost,
+        baseDelta: -config.ticketCost,
         userId: user.id,
       })
     : null
   const id = randomUUID()
   const playerFirst = Math.random() >= 0.5
 
-  await runGobangTransaction(async (tx) => {
+  const createdPolicy = await runGobangTransaction(async (tx) => {
+    await lockGobangUserRow(user.id, tx)
+
+    const todayCounts = await countTodayMatches(user.id, tx)
     const latestUser = await findGobangUserPoints(user.id, tx)
 
     if (!latestUser) {
       throw new Error("用户不存在")
     }
 
-    if (preparedTicketCost) {
+    const policy = resolveChallengePolicy({ ...user, points: latestUser.points }, todayCounts, config)
+
+    if (policy.ticketCost > 0 && preparedTicketCost) {
       await applyPointDelta({
         tx,
         userId: latestUser.id,
@@ -453,12 +624,13 @@ export async function createGobangMatch(user: CurrentUser) {
         client: tx,
       })
     }
-  })
 
+    return policy
+  })
 
   return {
     matches: await listGobangMatches(user.id),
-    policy,
+    policy: createdPolicy,
     summary: await getGobangPlayerSummary(user),
   }
 }
@@ -497,14 +669,20 @@ export async function getGobangMatch(matchId: string) {
 }
 
 export async function makeGobangMove(input: { matchId: string; user: CurrentUser; x: number; y: number }) {
-  if (input.x < 0 || input.x >= BOARD_SIZE || input.y < 0 || input.y >= BOARD_SIZE) {
+  if (!Number.isInteger(input.x) || !Number.isInteger(input.y) || input.x < 0 || input.x >= BOARD_SIZE || input.y < 0 || input.y >= BOARD_SIZE) {
     throw new Error("落子坐标超出棋盘范围")
   }
 
-  const config = await getGobangPluginConfig()
+  const [config, settings] = await Promise.all([
+    getGobangPluginConfig(),
+    getSiteSettings(),
+  ])
+  const winnerId = await runGobangTransaction(async (tx) => {
+    await lockGobangMatchRow(input.matchId, tx)
+
   const [match, moves] = await Promise.all([
-    getGobangMatchRow(input.matchId),
-    getGobangMoves(input.matchId),
+    getGobangMatchRow(input.matchId, tx),
+    getGobangMoves(input.matchId, tx),
   ])
 
   if (!match) {
@@ -543,6 +721,7 @@ export async function makeGobangMove(input: { matchId: string; user: CurrentUser
     step: moves.length + 1,
     x: input.x,
     y: input.y,
+    client: tx,
   })
 
 
@@ -553,20 +732,36 @@ export async function makeGobangMove(input: { matchId: string; user: CurrentUser
       matchId: input.matchId,
       winnerId: input.user.id,
       updatedAt: new Date(),
+      client: tx,
     })
 
 
 
     if (challengeMode === "FREE") {
-      await creditUserPoints(input.user.id, config.winReward, "[app:五子棋] 免费挑战获胜奖励")
+      await creditUserPointsInTransaction(tx, input.user.id, match.winReward, "[app:五子棋] 免费挑战获胜奖励", settings.pointName)
     } else {
-      await creditUserPoints(input.user.id, config.ticketCost + config.winReward, "[app:五子棋] 付费挑战胜利返本含奖金")
+      await creditUserPointsInTransaction(tx, input.user.id, match.winReward, "[app:五子棋] 付费挑战胜利返本含奖金", settings.pointName)
     }
 
-    return {
-      match: await getGobangMatch(input.matchId),
+    return input.user.id
+  }
+
+  const filledCellsAfterPlayerMove = board.flat().filter((cell) => cell !== 0).length
+  if (filledCellsAfterPlayerMove >= BOARD_SIZE * BOARD_SIZE) {
+    await finishGobangMatch({
+      matchId: input.matchId,
       winnerId: input.user.id,
+      updatedAt: new Date(),
+      client: tx,
+    })
+
+    if (challengeMode === "FREE") {
+      await creditUserPointsInTransaction(tx, input.user.id, match.winReward, "[app:五子棋] 免费挑战平局按玩家胜奖励", settings.pointName)
+    } else {
+      await creditUserPointsInTransaction(tx, input.user.id, match.winReward, "[app:五子棋] 付费挑战平局按玩家胜返本与奖励", settings.pointName)
     }
+
+    return input.user.id
   }
 
   const aiMove = chooseAiMove(board, config.aiLevel)
@@ -582,6 +777,7 @@ export async function makeGobangMove(input: { matchId: string; user: CurrentUser
     x: aiMove.x,
     y: aiMove.y,
     createdAt: aiMoveTime,
+    client: tx,
   })
 
   let winnerId: number | null = null
@@ -593,6 +789,7 @@ export async function makeGobangMove(input: { matchId: string; user: CurrentUser
       matchId: input.matchId,
       winnerId: AI_PLAYER_ID,
       updatedAt: new Date(),
+      client: tx,
     })
   } else if (filledCells >= BOARD_SIZE * BOARD_SIZE) {
     winnerId = input.user.id
@@ -600,16 +797,20 @@ export async function makeGobangMove(input: { matchId: string; user: CurrentUser
       matchId: input.matchId,
       winnerId: input.user.id,
       updatedAt: new Date(),
+      client: tx,
     })
 
     if (challengeMode === "FREE") {
-      await creditUserPoints(input.user.id, config.winReward, "[app:五子棋] 免费挑战平局按玩家胜奖励")
+      await creditUserPointsInTransaction(tx, input.user.id, match.winReward, "[app:五子棋] 免费挑战平局按玩家胜奖励", settings.pointName)
     } else {
-      await creditUserPoints(input.user.id, config.ticketCost + config.winReward, "[app:五子棋] 付费挑战平局按玩家胜返本与奖励")
+      await creditUserPointsInTransaction(tx, input.user.id, match.winReward, "[app:五子棋] 付费挑战平局按玩家胜返本与奖励", settings.pointName)
     }
   } else {
-    await updateGobangMatchTimestamp(input.matchId, new Date())
+    await updateGobangMatchTimestamp(input.matchId, new Date(), tx)
   }
+
+  return winnerId
+  })
 
   return {
     match: await getGobangMatch(input.matchId),

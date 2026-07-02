@@ -2,6 +2,10 @@
 
 ## 2026-07-02
 
+- Closed remaining Gobang score-farming gaps by serializing match creation per user, recalculating daily quotas inside the locked transaction, rejecting non-integer move coordinates, and clamping Gobang economy settings to safe integer ranges.
+- Added controlled variation to level-3 Gobang AI so it can choose among near-best moves and vary openings instead of replaying the exact same line every game.
+- Hardened Gobang paid challenge settlement by serializing move handling per match, keeping reward credits inside the locked transaction, using each match's stored reward amount, fixing final-cell draw handling, and strengthening level-3 AI threat evaluation.
+- Fixed admin point logs so decrease records display signed negative amounts and the point-log income/expense filter uses the actual point-log change types.
 - Kept the root layout dynamic so Docker image builds do not prerender database-backed pages without a runtime PostgreSQL connection, moved request-bound global add-on slots out of SSR, stopped injecting an unused pathname request header on every page, added CDN cache headers for public home feed pages, removed per-post full tipping summary loading from home feed rendering, and skipped redundant add-on post re-querying when no feed item hook is registered, reducing home feed origin latency and database fan-out.
 - Added anti-sniping protection for auction bids so bids placed in the final five minutes extend the auction to five minutes after the latest bid.
 - Optimized sitemap and RSS absolute URL generation so the configured SEO primary domain is resolved once per request instead of once per generated entry.

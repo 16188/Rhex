@@ -61,8 +61,8 @@ const checkInActionOptions = [
 ]
 const pointTypeOptions = [
   { value: "ALL", label: "全部变动" },
-  { value: "INCOME", label: "收入" },
-  { value: "EXPENSE", label: "支出" },
+  { value: "INCREASE", label: "收入" },
+  { value: "DECREASE", label: "支出" },
 ]
 const bucketTypeOptions = [
   { value: "ALL", label: "全部目录" },

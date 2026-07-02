@@ -17,7 +17,7 @@ import {
   findUserLoginLogsPage,
   findVipOrdersPage,
 } from "@/db/admin-log-queries"
-import { serializeDate, serializeDateTime } from "@/lib/formatters"
+import { formatNumber, serializeDate, serializeDateTime } from "@/lib/formatters"
 import { buildPointEffectSummaryText, resolvePointLogAuditPresentation } from "@/lib/point-log-audit"
 
 import { normalizePageSize, normalizePositiveInteger } from "@/lib/shared/normalizers"
@@ -129,10 +129,32 @@ function resolveAdminTone(action: string) {
 }
 
 function resolvePointTone(changeType: string, changeValue: number) {
-  if (changeType === "EXPENSE" || changeValue < 0) {
+  if (changeType === "DECREASE" || changeType === "EXPENSE" || changeValue < 0) {
     return "danger" as const
   }
   return "success" as const
+}
+
+function normalizePointLogChangeTypeFilter(value: string) {
+  const normalized = value.trim().toUpperCase()
+  if (normalized === "INCREASE" || normalized === "INCOME") {
+    return "INCREASE"
+  }
+  if (normalized === "DECREASE" || normalized === "EXPENSE") {
+    return "DECREASE"
+  }
+  return "ALL"
+}
+
+function formatPointLogChangeValue(changeType: string, changeValue: number) {
+  const amount = Math.abs(changeValue)
+  if (changeType === "DECREASE" || changeType === "EXPENSE") {
+    return `-${formatNumber(amount)}`
+  }
+  if (changeType === "INCREASE" || changeType === "INCOME") {
+    return `+${formatNumber(amount)}`
+  }
+  return `${changeValue > 0 ? "+" : changeValue < 0 ? "-" : ""}${formatNumber(amount)}`
 }
 
 function formatUserDisplay(user: { username: string; nickname: string | null } | null) {
@@ -173,7 +195,7 @@ export async function getAdminLogCenter(options: GetAdminLogCenterOptions = {}):
   const activeTab = normalizeTab(options.activeTab)
   const keyword = String(options.keyword ?? "").trim()
   const action = String(options.action ?? "ALL").trim() || "ALL"
-  const changeType = String(options.changeType ?? "ALL").trim() || "ALL"
+  const changeType = normalizePointLogChangeTypeFilter(String(options.changeType ?? "ALL"))
   const bucketType = String(options.bucketType ?? "ALL").trim() || "ALL"
   const requestedPage = normalizePositiveInteger(options.page, 1)
   const pageSize = normalizePageSize(options.pageSize)
@@ -356,7 +378,7 @@ export async function getAdminLogCenter(options: GetAdminLogCenterOptions = {}):
           actorSecondary: `@${item.user.username}`,
           typePrimary: item.changeType,
           typeSecondary: item.relatedType ?? "SYSTEM",
-          targetPrimary: `${item.changeValue > 0 ? "+" : ""}${item.changeValue}`,
+          targetPrimary: formatPointLogChangeValue(item.changeType, item.changeValue),
           targetSecondary: item.relatedId ?? "-",
           detailPrimary: effectSummary ? `${parsed.displayReason} · ${effectSummary}` : parsed.displayReason,
           detailSecondary: item.relatedType ? `关联 ${item.relatedType}` : "系统记录",
