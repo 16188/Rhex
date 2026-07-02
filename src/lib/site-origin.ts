@@ -1,10 +1,25 @@
 import { headers } from "next/headers";
-import { getConfiguredSiteOrigin, normalizeSiteOrigin } from "@/lib/site-origin-config"
+import { getSiteSettings } from "@/lib/site-settings"
+import { getConfiguredSiteOrigin, normalizeSiteOrigin, normalizeSiteOriginOrNull } from "@/lib/site-origin-config"
 
 export { getConfiguredSiteOrigin } from "@/lib/site-origin-config"
 
+export async function resolveConfiguredSiteOrigin() {
+  try {
+    const settings = await getSiteSettings()
+    const settingsOrigin = normalizeSiteOriginOrNull(settings.seoSiteOrigin)
+    if (settingsOrigin) {
+      return settingsOrigin
+    }
+  } catch {
+    // Fall back to environment configuration when the database is not ready.
+  }
+
+  return getConfiguredSiteOrigin()
+}
+
 export async function resolveSiteOrigin() {
-  const configuredOrigin = getConfiguredSiteOrigin()
+  const configuredOrigin = await resolveConfiguredSiteOrigin()
   if (configuredOrigin) {
     return configuredOrigin
   }

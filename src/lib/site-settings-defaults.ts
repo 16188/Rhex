@@ -15,6 +15,7 @@ export const defaultSiteSettingsCreateInput = {
   siteLogoText: "Rhex 论坛系统",
   siteLogoPath: null,
   siteSeoKeywords: "Rhex,Rhex 论坛系统,论坛,社区,Next.js,Prisma",
+  seoSiteOrigin: "",
   pointName: "积分",
   footerLinksJson: JSON.stringify(DEFAULT_FOOTER_LINKS),
   analyticsCode: null,

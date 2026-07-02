@@ -17,6 +17,7 @@ export interface SiteSettingsBaseData {
   siteLogoPath?: string | null
   siteIconPath?: string | null
   siteSeoKeywords: string[]
+  seoSiteOrigin?: string | null
   pointName: string
   redeemCodeHelpEnabled: boolean
   redeemCodeHelpTitle: string

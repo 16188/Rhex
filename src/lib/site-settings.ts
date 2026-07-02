@@ -140,6 +140,9 @@ function normalizeLegacyServerSiteSettings(data: ServerSiteSettingsData): Server
     likeExtraCostPoints: typeof data.likeExtraCostPoints === "number" && Number.isFinite(data.likeExtraCostPoints)
       ? Math.max(0, Math.floor(data.likeExtraCostPoints))
       : defaults.likeExtraCostPoints,
+    seoSiteOrigin: typeof data.seoSiteOrigin === "string"
+      ? data.seoSiteOrigin
+      : defaults.seoSiteOrigin,
   }
 }
 
@@ -441,6 +444,7 @@ function mapSiteSettings(record: SiteSettingsRecordData, tippingGifts: SiteTippi
     siteLogoPath: record.siteLogoPath,
     siteIconPath: siteBrandingSettings.iconPath || null,
     siteSeoKeywords: String(record.siteSeoKeywords || "").split(/[，,\n]+/).map((item) => item.trim()).filter(Boolean),
+    seoSiteOrigin: record.seoSiteOrigin || null,
     pointName: record.pointName,
     redeemCodeHelpEnabled: redeemCodeHelpSettings.enabled,
     redeemCodeHelpTitle: redeemCodeHelpSettings.title,

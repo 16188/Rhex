@@ -272,6 +272,12 @@ export function AdminProfileSettingsForm({
     }
   }
 
+  const seoOriginPreviewInput = draft.seoSiteOrigin.trim()
+  const seoOriginPreview = seoOriginPreviewInput
+    ? (/^[a-z][a-z\d+.-]*:\/\//i.test(seoOriginPreviewInput) ? seoOriginPreviewInput : `https://${seoOriginPreviewInput}`).replace(/\/+$/, "")
+    : ""
+  const sitemapPreviewUrl = seoOriginPreview ? `${seoOriginPreview}/sitemap.xml` : "/sitemap.xml"
+
   return (
     <>
       {activeSubTab === "branding" ? (
@@ -607,6 +613,17 @@ export function AdminProfileSettingsForm({
               action={<Badge variant="outline">Metadata</Badge>}
               className="h-full"
             >
+              <TextField
+                label="SEO 主域名"
+                value={draft.seoSiteOrigin}
+                onChange={(value) => updateDraftField("seoSiteOrigin", value)}
+                placeholder="https://accforum.com"
+                description="用于 canonical、Open Graph URL、sitemap 和 robots 中的正式站点域名；留空时回退到 SITE_URL / APP_URL 或当前请求域名。"
+              />
+              <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm">
+                <p className="text-xs font-medium text-muted-foreground">Google Search Console 提交地址</p>
+                <p className="mt-2 break-all font-mono text-xs text-foreground">{sitemapPreviewUrl}</p>
+              </div>
               <SettingsTextareaField
                 label="站点描述"
                 value={draft.siteDescription}

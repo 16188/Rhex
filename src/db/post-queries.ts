@@ -116,6 +116,25 @@ export async function findHomepagePosts(page: number, pageSize: number) {
   })
 }
 
+export async function findSitemapPosts(limit = 5000) {
+  const take = Math.min(Math.max(1, Math.floor(limit)), 50000)
+
+  return prisma.post.findMany({
+    where: {
+      status: { in: [...PUBLIC_READABLE_POST_STATUSES] },
+    },
+    select: {
+      id: true,
+      slug: true,
+      updatedAt: true,
+    },
+    orderBy: {
+      updatedAt: "desc",
+    },
+    take,
+  })
+}
+
 export async function findEditablePostBySlug(slug: string) {
   return prisma.post.findUnique({
     where: { slug },

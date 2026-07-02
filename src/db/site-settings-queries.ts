@@ -11,6 +11,7 @@ export const siteSettingsSelect = {
   siteLogoText: true,
   siteLogoPath: true,
   siteSeoKeywords: true,
+  seoSiteOrigin: true,
   pointName: true,
   analyticsCode: true,
   postLinkDisplayMode: true,

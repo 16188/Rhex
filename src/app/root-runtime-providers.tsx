@@ -25,7 +25,7 @@ import { getPublishedCustomPageFooterHiddenPaths } from "@/lib/custom-pages"
 import { hasDatabaseUrl } from "@/lib/db-status"
 import { DEFAULT_SITE_ICON_PATH, resolveSiteIconPath } from "@/lib/site-branding"
 import { defaultSiteSettingsCreateInput } from "@/lib/site-settings-defaults"
-import { getConfiguredSiteOrigin } from "@/lib/site-origin"
+import { getConfiguredSiteOrigin, normalizeSiteOriginOrNull } from "@/lib/site-origin-config"
 import { getSiteSettings } from "@/lib/site-settings"
 import { buildVipNameColorStyleVariables } from "@/lib/vip-name-colors"
 
@@ -45,11 +45,12 @@ function buildMetadataFromSettings(settings: {
   siteDescription: string
   siteIconPath?: string | null
   siteName: string
+  seoSiteOrigin?: string | null
   siteSeoKeywords: string | string[]
   siteSlogan: string
 }): Metadata {
   const rssUrl = "/rss.xml"
-  const configuredSiteOrigin = getConfiguredSiteOrigin()
+  const configuredSiteOrigin = normalizeSiteOriginOrNull(settings.seoSiteOrigin) ?? getConfiguredSiteOrigin()
   const resolvedSiteIconPath = resolveSiteIconPath(settings.siteIconPath ?? DEFAULT_SITE_ICON_PATH)
   const supportsAppleIcon = !/\.svg(?:$|[?#])/i.test(resolvedSiteIconPath)
 
@@ -82,6 +83,7 @@ export async function generateRootMetadata(): Promise<Metadata> {
       siteDescription: defaultSiteSettingsCreateInput.siteDescription,
       siteIconPath: DEFAULT_SITE_ICON_PATH,
       siteName: defaultSiteSettingsCreateInput.siteName,
+      seoSiteOrigin: defaultSiteSettingsCreateInput.seoSiteOrigin,
       siteSeoKeywords: defaultSiteSettingsCreateInput.siteSeoKeywords,
       siteSlogan: defaultSiteSettingsCreateInput.siteSlogan,
     })

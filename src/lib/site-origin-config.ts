@@ -1,10 +1,27 @@
+export function normalizeSiteOriginOrNull(value: string | null | undefined) {
+  const trimmed = value?.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  try {
+    const url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`)
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return null
+    }
+
+    return url.origin.replace(/\/$/, "")
+  } catch {
+    return null
+  }
+}
+
 export function normalizeSiteOrigin(value: string) {
-  return value.trim().replace(/\/$/, "")
+  return normalizeSiteOriginOrNull(value) ?? value.trim().replace(/\/+$/, "")
 }
 
 function readConfiguredOrigin(name: string) {
-  const value = process.env[name]?.trim()
-  return value ? normalizeSiteOrigin(value) : null
+  return normalizeSiteOriginOrNull(process.env[name])
 }
 
 export function getConfiguredSiteOrigin() {

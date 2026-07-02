@@ -1,0 +1,1 @@
+ALTER TABLE "SiteSetting" ADD COLUMN IF NOT EXISTS "seoSiteOrigin" TEXT DEFAULT '';

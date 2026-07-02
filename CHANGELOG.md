@@ -2,6 +2,7 @@
 
 ## 2026-06-26
 
+- Added an admin SEO primary-domain setting and routed metadataBase, canonical URL generation, robots sitemap URL, and full public-post sitemap generation through the configured domain.
 - Added a personal daily invite count card to the invite center and a daily invite-count lottery participation condition.
 - Adjusted invite leaderboard tie-breaking so users with the same invite count rank by who reached that count first.
 - Added all-time and daily invite leaderboards to the user invite center, counting only successful invited registrations.

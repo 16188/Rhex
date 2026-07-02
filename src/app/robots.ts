@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next"
 
-export default function robots(): MetadataRoute.Robots {
+import { toAbsoluteSiteUrl } from "@/lib/site-origin"
+
+export default async function robots(): Promise<MetadataRoute.Robots> {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
       disallow: ["/api/", "/write"],
     },
-    sitemap: "/sitemap.xml",
+    sitemap: await toAbsoluteSiteUrl("/sitemap.xml"),
   }
 }

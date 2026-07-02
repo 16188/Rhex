@@ -24,6 +24,7 @@ export interface AdminBasicSettingsInitialSettings {
   siteLogoPath?: string | null
   siteIconPath?: string | null
   siteSeoKeywords?: string[]
+  seoSiteOrigin?: string | null
   postLinkDisplayMode: "SLUG" | "ID"
   homeFeedPostListDisplayMode: PostListDisplayMode
   homeFeedPostListLoadMode: PostListLoadMode
@@ -172,6 +173,7 @@ export interface AdminBasicSettingsDraft {
   siteLogoPath: string
   siteIconPath: string
   siteSeoKeywords: string
+  seoSiteOrigin: string
   postLinkDisplayMode: "SLUG" | "ID"
   homeFeedPostListDisplayMode: PostListDisplayMode
   homeFeedPostListLoadMode: PostListLoadMode
@@ -416,6 +418,7 @@ export function createAdminBasicSettingsDraft(initialSettings: AdminBasicSetting
     siteLogoPath: initialSettings.siteLogoPath ?? "",
     siteIconPath: initialSettings.siteIconPath ?? "",
     siteSeoKeywords: (initialSettings.siteSeoKeywords ?? []).join(","),
+    seoSiteOrigin: initialSettings.seoSiteOrigin ?? "",
     postLinkDisplayMode: initialSettings.postLinkDisplayMode === "ID" ? "ID" : "SLUG",
     homeFeedPostListDisplayMode: normalizePostListDisplayMode(initialSettings.homeFeedPostListDisplayMode),
     homeFeedPostListLoadMode: initialSettings.homeFeedPostListLoadMode === POST_LIST_LOAD_MODE_INFINITE ? POST_LIST_LOAD_MODE_INFINITE : POST_LIST_LOAD_MODE_PAGINATION,
@@ -598,6 +601,7 @@ export function buildAdminBasicSettingsPayload(draft: AdminBasicSettingsDraft, m
       siteLogoPath: draft.siteLogoPath,
       siteIconPath: draft.siteIconPath,
       siteSeoKeywords: draft.siteSeoKeywords,
+      seoSiteOrigin: draft.seoSiteOrigin,
       postLinkDisplayMode: draft.postLinkDisplayMode,
       homeFeedPostListDisplayMode: draft.homeFeedPostListDisplayMode,
       homeFeedPostListLoadMode: draft.homeFeedPostListLoadMode ?? POST_LIST_LOAD_MODE_PAGINATION,

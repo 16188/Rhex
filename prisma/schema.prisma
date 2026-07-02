@@ -2099,6 +2099,7 @@ model SiteSetting {
   siteLogoText                  String
   siteLogoPath                  String?
   siteSeoKeywords               String?  @default("")
+  seoSiteOrigin                 String?  @default("")
   pointName                     String   @default("积分")
   analyticsCode                 String?
   postLinkDisplayMode           String   @default("SLUG")

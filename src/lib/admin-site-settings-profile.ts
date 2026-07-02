@@ -13,6 +13,7 @@ import { mergeFooterCopyrightSettings, mergeHomeFeedPostListLoadSettings, mergeH
 import { mergeTopHeaderAppLinks, normalizeHeaderAppIconName, normalizeSiteHeaderAppLinks } from "@/lib/site-header-app-links"
 import { mergeSiteSearchSettings, resolveSiteSearchSettings } from "@/lib/site-search-settings"
 import { normalizeFooterLinks } from "@/lib/shared/config-parsers"
+import { normalizeSiteOriginOrNull } from "@/lib/site-origin-config"
 import { resolveThemeCustomizationSettings } from "@/lib/theme"
 import { normalizePostEditableMinutes } from "@/lib/post-edit-window"
 
@@ -25,6 +26,8 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
     const siteLogoPath = readOptionalStringField(body, "siteLogoPath")
     const siteIconPath = readOptionalStringField(body, "siteIconPath")
     const siteSeoKeywords = readOptionalStringField(body, "siteSeoKeywords").split(/[，,\n]+/).map((item) => item.trim()).filter(Boolean).join(",")
+    const rawSeoSiteOrigin = readOptionalStringField(body, "seoSiteOrigin")
+    const seoSiteOrigin = rawSeoSiteOrigin ? normalizeSiteOriginOrNull(rawSeoSiteOrigin) : ""
     const analyticsCode = readOptionalStringField(body, "analyticsCode")
     const footerCopyrightText = readOptionalStringField(body, "footerCopyrightText")
     const postLinkDisplayMode = readOptionalStringField(body, "postLinkDisplayMode") === "ID" ? "ID" : "SLUG"
@@ -111,6 +114,10 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
       apiError(400, "站点名称和描述不能为空")
     }
 
+    if (rawSeoSiteOrigin && !seoSiteOrigin) {
+      apiError(400, "SEO 主域名必须是有效的 http(s) 域名，例如 https://accforum.com")
+    }
+
     const appStateWithHomeSidebarAnnouncement = mergeHomeSidebarAnnouncementSettings(existing.appStateJson, {
       enabled: homeSidebarAnnouncementsEnabled,
     })
@@ -171,6 +178,7 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
       siteLogoText,
       siteLogoPath: siteLogoPath || null,
       siteSeoKeywords,
+      seoSiteOrigin,
       analyticsCode: analyticsCode || null,
       postLinkDisplayMode,
       homeFeedPostListDisplayMode,
@@ -183,7 +191,7 @@ export async function updateProfileSiteSettingsSection(existing: SiteSettingsRec
     return finalizeSiteSettingsUpdate({
       settings,
       message: "基础信息已保存",
-      revalidatePaths: ["/", "/write", "/admin"],
+      revalidatePaths: ["/", "/write", "/admin", "/sitemap.xml", "/robots.txt"],
     })
   }
 

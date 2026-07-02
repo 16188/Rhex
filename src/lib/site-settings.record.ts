@@ -5,6 +5,7 @@ export interface SiteSettingsBaseRecordData {
   siteLogoText: string
   siteLogoPath?: string | null
   siteSeoKeywords?: string | null
+  seoSiteOrigin?: string | null
   pointName: string
   postLinkDisplayMode?: "SLUG" | "ID" | string | null
   homeFeedPostListDisplayMode?: string | null
