@@ -3,10 +3,6 @@ import { buildHookedFeedDisplayItems } from "@/lib/addon-feed-posts"
 import { getSessionActorFromRequest } from "@/lib/auth"
 import { getLatestFeed, type FeedSort } from "@/lib/forum-feed"
 import { resolveAdminActorFromSessionUser } from "@/lib/moderator-permissions"
-import {
-  attachPostListTipSummaries,
-  shouldAttachPostListTipSummaries,
-} from "@/lib/post-list-tipping"
 import { getSiteSettings } from "@/lib/site-settings"
 
 function parsePage(request: Request) {
@@ -47,9 +43,7 @@ export const GET = createRouteHandler(async ({ request }) => {
 
   return apiSuccess({
     ...result,
-    items: shouldAttachPostListTipSummaries(settings.homeFeedPostListDisplayMode)
-      ? await attachPostListTipSummaries(items, currentUser?.id)
-      : items,
+    items,
   })
 }, {
   errorMessage: "获取首页帖子失败",

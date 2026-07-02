@@ -2,6 +2,7 @@
 
 ## 2026-07-02
 
+- Removed per-post full tipping summary loading from home feed rendering and skipped redundant add-on post re-querying when no feed item hook is registered, reducing home feed database fan-out.
 - Added anti-sniping protection for auction bids so bids placed in the final five minutes extend the auction to five minutes after the latest bid.
 - Optimized sitemap and RSS absolute URL generation so the configured SEO primary domain is resolved once per request instead of once per generated entry.
 

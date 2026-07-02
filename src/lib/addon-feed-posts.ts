@@ -3,11 +3,12 @@ import "server-only"
 import {
   executeAddonAsyncWaterfallHook,
 } from "@/addons-host/runtime/hooks"
+import { loadAddonsRegistry } from "@/addons-host/runtime/loader"
 import { queryAddonPosts } from "@/addons-host/runtime/posts"
 import type { AddonPostRecord } from "@/addons-host/types"
 import { formatRelativeTime } from "@/lib/formatters"
 import type { FeedSort, ForumFeedItem } from "@/lib/forum-feed"
-import type { FeedDisplayItem } from "@/lib/forum-feed-display"
+import { mapForumFeedItemsToDisplayItems, type FeedDisplayItem } from "@/lib/forum-feed-display"
 import { getFeedPinLabel } from "@/lib/forum-feed-display"
 import type { PostStreamDisplayItem } from "@/lib/forum-post-stream-display"
 import { getVisiblePinLabel } from "@/lib/forum-post-stream-display"
@@ -117,6 +118,11 @@ async function resolveHookedFeedPosts(
   return Array.isArray(hooked.value) ? hooked.value : ordered
 }
 
+async function hasAsyncWaterfallHook(hook: string) {
+  const candidates = (await loadAddonsRegistry()).asyncWaterfallHookCandidatesByHook.get(hook)
+  return Boolean(candidates?.length)
+}
+
 async function applyPostListDisplayItemsHook<TItem extends { id: string }>(input: {
   items: TItem[]
   source: "feed" | "post-stream"
@@ -151,6 +157,22 @@ export async function buildHookedFeedDisplayItems(input: {
   request?: Request
   searchParams?: URLSearchParams
 }) {
+  const feedPostsHookEnabled = await hasAsyncWaterfallHook("feed.posts.items")
+
+  if (!feedPostsHookEnabled) {
+    const displayItems = mapForumFeedItemsToDisplayItems(input.items, input.sort, input.settings)
+
+    return applyPostListDisplayItemsHook({
+      items: displayItems,
+      source: "feed",
+      sort: input.sort,
+      displayMode: input.listDisplayMode,
+      pathname: input.pathname,
+      request: input.request,
+      searchParams: input.searchParams,
+    })
+  }
+
   const legacyItemsById = new Map(input.items.map((item) => [item.id, item]))
   const hookedPosts = await resolveHookedFeedPosts(
     input.items.map((item) => item.id),

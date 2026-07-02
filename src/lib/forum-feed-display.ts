@@ -132,6 +132,7 @@ export function mapForumFeedItemsToDisplayItems(
       latestReplyCommentId: item.latestReplyCommentId ?? null,
       commentCount: item.commentCount,
       likeCount: item.likeCount,
+      favoriteCount: item.favoriteCount,
       tipCount: item.tipCount,
       tipTotalPoints: item.tipTotalPoints,
       viewCount: item.viewCount,

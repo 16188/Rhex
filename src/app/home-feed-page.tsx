@@ -50,10 +50,6 @@ import { getHomeSidebarHotTopics } from "@/lib/home-sidebar"
 import { groupHomeSidebarPanels } from "@/lib/home-sidebar-layout"
 import { getHomeSidebarStats } from "@/lib/home-sidebar-stats"
 import { POST_LIST_LOAD_MODE_INFINITE } from "@/lib/post-list-load-mode"
-import {
-  attachPostListTipSummaries,
-  shouldAttachPostListTipSummaries,
-} from "@/lib/post-list-tipping"
 import { resolveAdminActorFromSessionUser } from "@/lib/moderator-permissions"
 import { getRssHomeDisplaySettings } from "@/lib/rss-harvest"
 import { getRssUniverseFeedPage } from "@/lib/rss-public-feed"
@@ -218,7 +214,6 @@ export async function HomeFeedPage({
   const needsServerCurrentUser =
     currentSort === "following"
     || (currentSort === "universe" && !enableUniverseSourceFilter)
-    || Boolean(currentSort && shouldAttachPostListTipSummaries(settings.homeFeedPostListDisplayMode))
   const currentUser = needsServerCurrentUser ? await getCurrentUser() : null
   const addonHookSearchParams = buildAddonHookSearchParams(resolvedSearchParams)
   const adminActor = currentUser ? await resolveAdminActorFromSessionUser(currentUser) : null
@@ -280,9 +275,7 @@ export async function HomeFeedPage({
             searchParams: addonHookSearchParams,
           })
 
-          return shouldAttachPostListTipSummaries(settings.homeFeedPostListDisplayMode)
-            ? attachPostListTipSummaries(displayItems, currentUser?.id)
-            : displayItems
+          return displayItems
         })()
       : null
 

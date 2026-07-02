@@ -50,6 +50,7 @@ export interface ForumFeedItem {
   commentCount: number
   viewCount: number
   likeCount: number
+  favoriteCount: number
   tipCount: number
   tipTotalPoints: number
   hasRedPacket: boolean
@@ -143,6 +144,7 @@ type FeedPost = {
   commentCount: number
   viewCount: number
   likeCount: number
+  favoriteCount: number
   tipCount: number | null
   tipTotalPoints: number | null
   pinScope: string | null
@@ -221,6 +223,7 @@ function mapFeedPost(post: FeedPostRecord | PinnedFeedPostRecord, anonymousMaskI
     commentCount: feedPost.commentCount,
     viewCount: feedPost.viewCount,
     likeCount: feedPost.likeCount,
+    favoriteCount: feedPost.favoriteCount,
     tipCount: feedPost.tipCount ?? 0,
     tipTotalPoints: feedPost.tipTotalPoints ?? 0,
     hasRedPacket: Boolean(feedPost.redPacket),
