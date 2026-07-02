@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
-export const dynamic = "force-dynamic"
+export const revalidate = 30
 
 const noScriptRootInitStyles = `
   html[data-root-init="pending"] {

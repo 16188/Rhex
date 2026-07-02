@@ -1,10 +1,9 @@
 import type { Metadata } from "next"
-import { connection } from "next/server"
 import { Suspense, type CSSProperties } from "react"
 
 import { RhexGlobalSdkBootstrap } from "@/addons-host/client/rhex-global-sdk"
 import { AddonRuntimeProvider } from "@/addons-host/client/addon-runtime-provider"
-import { GlobalLayoutAddonSlotsBoundary } from "@/addons-host/runtime/global-layout-addon-slots-boundary"
+import { GlobalLayoutAddonSlots } from "@/addons-host/client/global-layout-addon-slots"
 import { BackToTopButton } from "@/components/back-to-top-button"
 import { ConditionalSiteFooter } from "@/components/conditional-site-footer"
 import { CurrentUserInboxProvider, CurrentUserProvider } from "@/components/current-user-provider"
@@ -89,13 +88,10 @@ export async function generateRootMetadata(): Promise<Metadata> {
     })
   }
 
-  await connection()
   return buildMetadataFromSettings(await getSiteSettings())
 }
 
 export async function RootRuntimeProviders({ children }: { children: React.ReactNode }) {
-  await connection()
-
   const [settings, editorProviders, editorToolbarItems, addonSurfaceOverrides, footerHiddenPaths] = await Promise.all([
     getSiteSettings(),
     listAddonEditorProviderDescriptors(),
@@ -117,7 +113,7 @@ export async function RootRuntimeProviders({ children }: { children: React.React
       <RootBootstrap />
       <NavigationStaleRefresh />
       <Suspense fallback={null}>
-        <GlobalLayoutAddonSlotsBoundary />
+        <GlobalLayoutAddonSlots />
       </Suspense>
       <ThemeProvider settings={settings.theme}>
         <CurrentUserProvider>

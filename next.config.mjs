@@ -15,6 +15,7 @@ const normalizeAssetPrefix = (value) => {
 const assetPrefix = isProductionBuild
   ? normalizeAssetPrefix(process.env.NEXT_ASSET_PREFIX)
   : undefined
+const publicHomeFeedCacheControl = "public, s-maxage=30, stale-while-revalidate=300"
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -34,7 +35,25 @@ const nextConfig = {
   },
   turbopack: {
     root: projectRoot,
-  }
+  },
+  async headers() {
+    const cacheHeaders = [
+      {
+        key: "Cache-Control",
+        value: publicHomeFeedCacheControl,
+      },
+    ]
+
+    return [
+      { source: "/", headers: cacheHeaders },
+      { source: "/latest", headers: cacheHeaders },
+      { source: "/latest/page/:page", headers: cacheHeaders },
+      { source: "/new", headers: cacheHeaders },
+      { source: "/new/page/:page", headers: cacheHeaders },
+      { source: "/hot", headers: cacheHeaders },
+      { source: "/hot/page/:page", headers: cacheHeaders },
+    ]
+  },
 }
 
 export default nextConfig
