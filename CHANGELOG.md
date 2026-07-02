@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-02
+
+- Added anti-sniping protection for auction bids so bids placed in the final five minutes extend the auction to five minutes after the latest bid.
+- Optimized sitemap and RSS absolute URL generation so the configured SEO primary domain is resolved once per request instead of once per generated entry.
+
 ## 2026-06-26
 
 - Added an admin SEO primary-domain setting and routed metadataBase, canonical URL generation, robots sitemap URL, and full public-post sitemap generation through the configured domain.

@@ -7,7 +7,9 @@ import {
 import { apiError } from "@/lib/api-route"
 import { getSiteSettings } from "@/lib/site-settings"
 import {
+  enqueuePostAuctionSettlement,
   refundAuctionPoints,
+  resolvePostAuctionExtendedEndsAt,
   runSerializablePostAuctionTransaction,
 } from "@/lib/post-auctions.core"
 import { settlePostAuctionByAuctionId } from "@/lib/post-auctions.settlement"
@@ -48,7 +50,7 @@ export async function placePostAuctionBid(input: {
   const settings = await getSiteSettings()
   const normalizedAmount = Math.max(1, Math.trunc(input.amount))
 
-  return runSerializablePostAuctionTransaction(async (tx) => {
+  const result = await runSerializablePostAuctionTransaction(async (tx) => {
     const [auction, bidder] = await Promise.all([
       tx.postAuction.findUnique({
         where: { postId: input.postId },
@@ -104,13 +106,18 @@ export async function placePostAuctionBid(input: {
       apiError(409, "当前拍卖不可参与")
     }
 
-    if (auction.startsAt && auction.startsAt.getTime() > Date.now()) {
+    const bidAt = new Date()
+
+    if (auction.startsAt && auction.startsAt.getTime() > bidAt.getTime()) {
       apiError(409, "拍卖尚未开始")
     }
 
-    if (auction.endsAt.getTime() <= Date.now()) {
+    if (auction.endsAt.getTime() <= bidAt.getTime()) {
       apiError(409, "当前拍卖已结束")
     }
+
+    const extendedEndsAt = resolvePostAuctionExtendedEndsAt(auction.endsAt, bidAt)
+    const shouldExtendEndsAt = extendedEndsAt.getTime() > auction.endsAt.getTime()
 
     const existingEntry = await tx.postAuctionEntry.findUnique({
       where: {
@@ -161,6 +168,8 @@ export async function placePostAuctionBid(input: {
           userId: bidder.id,
           currentBidAmount: normalizedAmount,
           frozenAmount: normalizedAmount,
+          firstBidAt: bidAt,
+          lastBidAt: bidAt,
         },
       })
 
@@ -169,6 +178,7 @@ export async function placePostAuctionBid(input: {
           auctionId: auction.id,
           userId: bidder.id,
           amount: normalizedAmount,
+          createdAt: bidAt,
         },
       })
 
@@ -181,6 +191,7 @@ export async function placePostAuctionBid(input: {
         data: {
           participantCount: { increment: 1 },
           bidCount: { increment: 1 },
+          ...(shouldExtendEndsAt ? { endsAt: extendedEndsAt } : {}),
           ...(shouldLead
             ? {
                 leaderUserId: bidder.id,
@@ -191,8 +202,10 @@ export async function placePostAuctionBid(input: {
       })
 
       return {
+        auctionId: auction.id,
         postSlug: auction.post.slug,
         changedUserIds: [bidder.id],
+        extendedEndsAt: shouldExtendEndsAt ? extendedEndsAt : null,
       }
     }
 
@@ -250,7 +263,7 @@ export async function placePostAuctionBid(input: {
           frozenAmount: normalizedAmount,
           status: PostAuctionEntryStatus.ACTIVE,
           refundedAt: null,
-          lastBidAt: new Date(),
+          lastBidAt: bidAt,
         },
         create: {
           auctionId: auction.id,
@@ -258,6 +271,8 @@ export async function placePostAuctionBid(input: {
           currentBidAmount: normalizedAmount,
           frozenAmount: normalizedAmount,
           status: PostAuctionEntryStatus.ACTIVE,
+          firstBidAt: bidAt,
+          lastBidAt: bidAt,
         },
       })
     } else {
@@ -327,7 +342,7 @@ export async function placePostAuctionBid(input: {
             data: {
               frozenAmount: 0,
               status: PostAuctionEntryStatus.OUTBID,
-              refundedAt: new Date(),
+              refundedAt: bidAt,
             },
           })
         }
@@ -345,7 +360,7 @@ export async function placePostAuctionBid(input: {
           frozenAmount: normalizedAmount,
           status: PostAuctionEntryStatus.ACTIVE,
           refundedAt: null,
-          lastBidAt: new Date(),
+          lastBidAt: bidAt,
         },
         create: {
           auctionId: auction.id,
@@ -353,6 +368,8 @@ export async function placePostAuctionBid(input: {
           currentBidAmount: normalizedAmount,
           frozenAmount: normalizedAmount,
           status: PostAuctionEntryStatus.ACTIVE,
+          firstBidAt: bidAt,
+          lastBidAt: bidAt,
         },
       })
     }
@@ -362,6 +379,7 @@ export async function placePostAuctionBid(input: {
         auctionId: auction.id,
         userId: bidder.id,
         amount: normalizedAmount,
+        createdAt: bidAt,
       },
     })
 
@@ -372,6 +390,7 @@ export async function placePostAuctionBid(input: {
         bidCount: { increment: 1 },
         leaderUserId: bidder.id,
         leaderBidAmount: normalizedAmount,
+        ...(shouldExtendEndsAt ? { endsAt: extendedEndsAt } : {}),
       },
     })
 
@@ -381,8 +400,16 @@ export async function placePostAuctionBid(input: {
     }
 
     return {
+      auctionId: auction.id,
       postSlug: auction.post.slug,
       changedUserIds: Array.from(changedUserIds),
+      extendedEndsAt: shouldExtendEndsAt ? extendedEndsAt : null,
     }
   }, { postId: input.postId })
+
+  if (result.extendedEndsAt) {
+    await enqueuePostAuctionSettlement(result.auctionId, result.extendedEndsAt)
+  }
+
+  return result
 }

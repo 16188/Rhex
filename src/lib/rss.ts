@@ -5,7 +5,7 @@ import { getAnonymousMaskDisplayIdentity } from "@/lib/post-anonymous"
 import { getCanonicalPostPath } from "@/lib/post-links"
 import { getPublicPostContentText } from "@/lib/post-content"
 import { getSiteSettings } from "@/lib/site-settings"
-import { toAbsoluteSiteUrl } from "@/lib/site-origin"
+import { buildAbsoluteSiteUrl, resolveSiteOriginFromSetting, toAbsoluteSiteUrl } from "@/lib/site-origin"
 import { getUserDisplayName } from "@/lib/users"
 
 interface RssFeedChannel {
@@ -62,10 +62,11 @@ function buildContent(summary: string | null, content: string) {
 
 async function buildDefaultChannel(): Promise<RssFeedChannel> {
   const settings = await getSiteSettings()
+  const siteOrigin = await resolveSiteOriginFromSetting(settings.seoSiteOrigin)
 
   return {
     title: normalizeText(settings.siteName),
-    link: await toAbsoluteSiteUrl("/"),
+    link: buildAbsoluteSiteUrl(siteOrigin, "/"),
     description: normalizeText(settings.siteDescription || settings.siteSlogan || settings.siteName),
     feedPath: "/rss.xml",
   }
@@ -77,7 +78,9 @@ async function buildFeed(sourcePromise: Promise<RssFeedSource>) {
     getAnonymousMaskDisplayIdentity(),
     getSiteSettings(),
   ])
-  const feedUrl = await toAbsoluteSiteUrl(source.channel.feedPath)
+  const siteOrigin = await resolveSiteOriginFromSetting(settings.seoSiteOrigin)
+  const toUrl = (path: string) => buildAbsoluteSiteUrl(siteOrigin, path)
+  const feedUrl = toUrl(source.channel.feedPath)
   const updated = source.posts[0]?.publishedAt ?? source.posts[0]?.createdAt ?? new Date()
 
   const feed = new Feed({
@@ -96,7 +99,7 @@ async function buildFeed(sourcePromise: Promise<RssFeedSource>) {
     const author = post.isAnonymous
       ? (anonymousMaskIdentity?.name ?? anonymousMaskIdentity?.username ?? "匿名用户")
       : getUserDisplayName(post.author)
-    const link = await toAbsoluteSiteUrl(getCanonicalPostPath(post, { mode: settings.postLinkDisplayMode }))
+    const link = toUrl(getCanonicalPostPath(post, { mode: settings.postLinkDisplayMode }))
     const publishedAt = post.publishedAt ?? post.createdAt
     const description = buildDescription(post.summary, post.content)
 

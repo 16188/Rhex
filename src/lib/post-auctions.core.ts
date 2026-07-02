@@ -22,6 +22,7 @@ const MAX_POST_AUCTION_SETTLEMENT_BATCH_SIZE = 500
 const DEFAULT_POST_AUCTION_SETTLEMENT_RECOVERY_INTERVAL_MS = 60_000
 const DEFAULT_POST_AUCTION_SETTLEMENT_RECOVERY_BATCH_SIZE = 100
 const MAX_POST_AUCTION_SETTLEMENT_RECOVERY_BATCH_SIZE = 500
+export const POST_AUCTION_ANTI_SNIPE_EXTENSION_MS = 5 * 60 * 1000
 
 export type AuctionTx = PrismaNamespace.TransactionClient
 
@@ -148,6 +149,13 @@ export function enqueuePostAuctionSettlement(auctionId: string, endsAt: Date) {
     { auctionId },
     { delayMs },
   )
+}
+
+export function resolvePostAuctionExtendedEndsAt(currentEndsAt: Date, bidAt: Date) {
+  const extendedEndsAt = new Date(bidAt.getTime() + POST_AUCTION_ANTI_SNIPE_EXTENSION_MS)
+  return extendedEndsAt.getTime() > currentEndsAt.getTime()
+    ? extendedEndsAt
+    : currentEndsAt
 }
 
 export async function resolveSellerIncome(
