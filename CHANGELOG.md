@@ -2,7 +2,7 @@
 
 ## 2026-07-02
 
-- Removed the root layout's forced dynamic rendering, moved request-bound global add-on slots out of SSR, stopped injecting an unused pathname request header on every page, added CDN cache headers for public home feed pages, removed per-post full tipping summary loading from home feed rendering, and skipped redundant add-on post re-querying when no feed item hook is registered, reducing home feed origin latency and database fan-out.
+- Kept the root layout dynamic so Docker image builds do not prerender database-backed pages without a runtime PostgreSQL connection, moved request-bound global add-on slots out of SSR, stopped injecting an unused pathname request header on every page, added CDN cache headers for public home feed pages, removed per-post full tipping summary loading from home feed rendering, and skipped redundant add-on post re-querying when no feed item hook is registered, reducing home feed origin latency and database fan-out.
 - Added anti-sniping protection for auction bids so bids placed in the final five minutes extend the auction to five minutes after the latest bid.
 - Optimized sitemap and RSS absolute URL generation so the configured SEO primary domain is resolved once per request instead of once per generated entry.
 
