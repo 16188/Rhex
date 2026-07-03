@@ -107,6 +107,8 @@ export async function getPostAuctionSummary(
     || summaryStatus === PostAuctionStatus.CANCELLED
     || summaryStatus === PostAuctionStatus.FAILED
     || now.getTime() >= auction.endsAt.getTime()
+  const viewerCanViewSealedBids = Boolean(options?.isAdmin || resultVisible || hasEnded)
+  const bidAmountsVisible = auction.mode === PostAuctionMode.OPEN_ASCENDING || viewerCanViewSealedBids
   const isSeller = Boolean(currentUserId && currentUserId === auction.sellerId)
   const viewerCanViewWinnerContent = Boolean(
     options?.isAdmin
@@ -125,14 +127,8 @@ export async function getPostAuctionSummary(
       entry.user.vipExpiresAt && entry.user.vipExpiresAt.getTime() > Date.now(),
     ),
     vipLevel: entry.user.vipLevel ?? null,
-    amount:
-      auction.mode === PostAuctionMode.OPEN_ASCENDING || hasEnded
-        ? entry.currentBidAmount
-        : null,
-    isLeader: Boolean(
-      (auction.mode === PostAuctionMode.OPEN_ASCENDING || hasEnded)
-      && auction.leaderUserId === entry.userId,
-    ),
+    amount: bidAmountsVisible ? entry.currentBidAmount : null,
+    isLeader: Boolean(bidAmountsVisible && auction.leaderUserId === entry.userId),
   }))
 
   return {
@@ -150,11 +146,11 @@ export async function getPostAuctionSummary(
     participantCount: auction.participantCount,
     bidCount: auction.bidCount,
     leaderBidAmount:
-      auction.mode === PostAuctionMode.OPEN_ASCENDING || resultVisible
+      bidAmountsVisible
         ? auction.leaderBidAmount
         : null,
     leaderUserId:
-      auction.mode === PostAuctionMode.OPEN_ASCENDING || resultVisible
+      bidAmountsVisible
         ? auction.leaderUserId ?? null
         : null,
     winnerUserId: resultVisible ? auction.winnerUserId ?? null : null,
@@ -189,6 +185,7 @@ export async function getPostAuctionSummary(
       && !hasEnded
       && (auction.mode === PostAuctionMode.OPEN_ASCENDING || !viewerEntry),
     ),
+    viewerCanViewSealedBids,
     viewerCanViewWinnerContent,
     winnerOnlyContentPreview: auction.winnerOnlyContentPreview ?? null,
     winnerOnlyContent: viewerCanViewWinnerContent
@@ -274,6 +271,7 @@ export async function getPostAuctionParticipantPage(
   options?: {
     page?: number
     pageSize?: number
+    isAdmin?: boolean
   },
 ): Promise<PostAuctionParticipantPage | null> {
   const auction = await prisma.postAuction.findUnique({
@@ -297,6 +295,7 @@ export async function getPostAuctionParticipantPage(
     || auction.status === PostAuctionStatus.CANCELLED
     || auction.status === PostAuctionStatus.FAILED
     || auction.endsAt.getTime() <= Date.now()
+  const amountsVisible = auction.mode === PostAuctionMode.OPEN_ASCENDING || hasEnded || Boolean(options?.isAdmin)
 
   const pageSize = Math.min(20, Math.max(1, Math.trunc(options?.pageSize ?? 10)))
   const page = Math.max(1, Math.trunc(options?.page ?? 1))
@@ -340,7 +339,7 @@ export async function getPostAuctionParticipantPage(
           : entry.firstBidAt
       ).toISOString(),
       amount:
-        auction.mode === PostAuctionMode.OPEN_ASCENDING || hasEnded
+        amountsVisible
           ? entry.currentBidAmount
           : null,
     })),

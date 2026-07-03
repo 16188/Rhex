@@ -35,7 +35,9 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
     revalidatePath(`/posts/${result.postSlug}`)
     revalidatePath("/")
 
-    const summary = await getPostAuctionSummary(postId, currentUser.id)
+    const summary = await getPostAuctionSummary(postId, currentUser.id, {
+      isAdmin: currentUser.role === "ADMIN",
+    })
 
     return apiSuccess(summary, "出价成功")
   })

@@ -82,7 +82,8 @@ export function PostAuctionPanel({
   )
   const sliderValue = Math.min(Math.max(bidValue, sliderMin), sliderMax)
   const isSealedBid = auction.mode === "SEALED_BID"
-  const showBidAmounts = !isSealedBid || timing.hasEnded
+  const showBidAmounts = !isSealedBid || timing.hasEnded || auction.viewerCanViewSealedBids
+  const showSealedBidRecords = isSealedBid && showBidAmounts
   const isLeadingOpenAuctionBidder = auction.mode === "OPEN_ASCENDING" && auction.viewerHasJoined && auction.viewerIsLeader
   const phaseLabel = resolveAuctionPhaseLabel(auction, timing)
   const timelineLabel = resolveAuctionTimelineLabel(auction, timing)
@@ -203,7 +204,7 @@ export function PostAuctionPanel({
                     </span>
                     <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground sm:text-sm">{timelineLabel}</span>
                   </div>
-                  {!isSealedBid ? (
+                  {!isSealedBid || showBidAmounts ? (
                     <Badge variant="outline" className="shrink-0 rounded-full bg-background/80">
                       {headlineLabel} {formatNumber(headlineAmount)} {pointName}
                     </Badge>
@@ -420,10 +421,12 @@ export function PostAuctionPanel({
       <Modal
         open={showParticipantsModal}
         onClose={() => setShowParticipantsModal(false)}
-        title={isSealedBid && timing.hasEnded ? "全部竞拍记录" : isSealedBid ? "全部参与用户" : "全部参与记录"}
+        title={showSealedBidRecords ? "全部竞拍记录" : isSealedBid ? "全部参与用户" : "全部参与记录"}
         description={isSealedBid
-          ? timing.hasEnded
-            ? `竞拍已结束，按参与时间排序，共 ${formatCompactNumber(participantsTotal)} 人，出价已公开。`
+          ? showBidAmounts
+            ? timing.hasEnded
+              ? `竞拍已结束，按参与时间排序，共 ${formatCompactNumber(participantsTotal)} 人，出价已公开。`
+              : `管理员视图，按参与时间排序，共 ${formatCompactNumber(participantsTotal)} 人，可查看密封出价。`
             : `按最新参与时间排序，共 ${formatCompactNumber(participantsTotal)} 人。`
           : `按最新出价时间排序，共 ${formatCompactNumber(participantsTotal)} 条。`}
         size="lg"

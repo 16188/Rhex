@@ -76,6 +76,7 @@ export interface PostAuctionSummary {
   viewerStatus: string | null
   viewerIsLeader: boolean
   viewerCanBid: boolean
+  viewerCanViewSealedBids: boolean
   viewerCanViewWinnerContent: boolean
   winnerOnlyContentPreview: string | null
   winnerOnlyContent: string | null

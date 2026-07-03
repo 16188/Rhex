@@ -9,6 +9,7 @@ import { getBusinessMinuteOfDay } from "@/lib/formatters"
 import { getPointEffectAllScopeKeyByTargetType, isPointEffectScopeMatchableForBadgeEffects, type PointEffectScopeKey } from "@/lib/point-effect-definitions"
 import { buildPointLogEffectMetadata, buildPointLogTaxMetadata, mergePointLogMetadataIntoEventData } from "@/lib/point-log-audit"
 import type { PointLogEventDataInput, PointLogEventType } from "@/lib/point-log-events"
+import { getUserActiveAuctionReservedPoints, lockUserPointReservationRow } from "@/lib/point-reservations"
 import { addSafeIntegers, subtractSafeIntegers } from "@/lib/shared/safe-integer"
 import { executeAddonActionHook, executeAddonAsyncWaterfallHook } from "@/addons-host/runtime/hooks"
 import type { AddonPointSettlementValue } from "@/addons-host/types"
@@ -413,6 +414,7 @@ export async function applyPointDelta(params: {
   effectPrepared?: PreparedPointDelta
   relatedType?: RelatedType | null
   relatedId?: string | null
+  reservedPointsToConsume?: number
   insufficientMessage?: string
 }) {
   const { prepared, beforeBalance } = params
@@ -486,11 +488,22 @@ export async function applyPointDelta(params: {
 
       actualBeforeBalance = resolvedBeforeBalance
     } else {
+      await lockUserPointReservationRow(params.tx, params.userId)
+
+      const reservedPoints = await getUserActiveAuctionReservedPoints(params.tx, params.userId)
+      const consumedReservedPoints = Math.max(0, Math.trunc(params.reservedPointsToConsume ?? 0))
+      const protectedReservedPoints = Math.max(0, reservedPoints - consumedReservedPoints)
+      const requiredBalance = addSafeIntegers(changeValue, protectedReservedPoints)
+
+      if (requiredBalance === null) {
+        apiError(500, "ç§¯åˆ†ç»“ç®—ç»“æžœæº¢å‡º")
+      }
+
       const deducted = await params.tx.user.updateMany({
         where: {
           id: params.userId,
           points: {
-            gte: changeValue,
+            gte: requiredBalance,
           },
         },
         data: {

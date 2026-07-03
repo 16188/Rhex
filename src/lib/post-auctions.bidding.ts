@@ -8,13 +8,43 @@ import { apiError } from "@/lib/api-route"
 import { getSiteSettings } from "@/lib/site-settings"
 import {
   enqueuePostAuctionSettlement,
+  getAuctionChargedReservationAmount,
   refundAuctionPoints,
   resolvePostAuctionExtendedEndsAt,
   runSerializablePostAuctionTransaction,
+  type AuctionTx,
 } from "@/lib/post-auctions.core"
 import { settlePostAuctionByAuctionId } from "@/lib/post-auctions.settlement"
-import { POINT_LOG_EVENT_TYPES } from "@/lib/point-log-events"
-import { prepareScopedPointDelta, applyPointDelta } from "@/lib/point-center"
+import { getUserActiveAuctionReservedPoints, lockUserPointReservationRow } from "@/lib/point-reservations"
+
+async function requireAvailableAuctionBidPoints(
+  tx: AuctionTx,
+  input: {
+    userId: number
+    amount: number
+    message: string
+  },
+) {
+  await lockUserPointReservationRow(tx, input.userId)
+
+  const user = await tx.user.findUnique({
+    where: { id: input.userId },
+    select: {
+      points: true,
+    },
+  })
+
+  if (!user) {
+    apiError(404, "用户不存在")
+  }
+
+  const reservedPoints = await getUserActiveAuctionReservedPoints(tx, input.userId)
+  const availablePoints = user.points - reservedPoints
+
+  if (availablePoints < input.amount) {
+    apiError(409, input.message)
+  }
+}
 
 export async function placePostAuctionBid(input: {
   postId: string
@@ -137,29 +167,10 @@ export async function placePostAuctionBid(input: {
         apiError(400, `出价不能低于起拍价 ${auction.startPrice} ${settings.pointName}`)
       }
 
-      const preparedBidFreeze = await prepareScopedPointDelta({
-        scopeKey: "POST_AUCTION_BID_FREEZE",
-        baseDelta: -normalizedAmount,
+      await requireAvailableAuctionBidPoints(tx, {
         userId: bidder.id,
-      })
-
-      await applyPointDelta({
-        tx,
-        userId: bidder.id,
-        beforeBalance: bidder.points,
-        prepared: preparedBidFreeze,
-        pointName: settings.pointName,
-        insufficientMessage: `${settings.pointName}不足，无法完成本次出价`,
-        reason: "[拍卖] 密封竞拍冻结出价积分",
-        eventType: POINT_LOG_EVENT_TYPES.POST_AUCTION_BID_FREEZE,
-        eventData: {
-          postId: auction.post.id,
-          auctionId: auction.id,
-          amount: normalizedAmount,
-          mode: auction.mode,
-        },
-        relatedType: "POST",
-        relatedId: auction.post.id,
+        amount: normalizedAmount,
+        message: `${settings.pointName}不足，无法完成本次出价`,
       })
 
       await tx.postAuctionEntry.create({
@@ -225,30 +236,10 @@ export async function placePostAuctionBid(input: {
         apiError(409, "新出价必须高于你当前的领先出价")
       }
 
-      const preparedBidFreeze = await prepareScopedPointDelta({
-        scopeKey: "POST_AUCTION_BID_FREEZE",
-        baseDelta: -additionalFreezeAmount,
+      await requireAvailableAuctionBidPoints(tx, {
         userId: bidder.id,
-      })
-
-      await applyPointDelta({
-        tx,
-        userId: bidder.id,
-        beforeBalance: bidder.points,
-        prepared: preparedBidFreeze,
-        pointName: settings.pointName,
-        insufficientMessage: `${settings.pointName}不足，无法继续加价`,
-        reason: "[拍卖] 公开拍卖继续加价",
-        eventType: POINT_LOG_EVENT_TYPES.POST_AUCTION_BID_FREEZE,
-        eventData: {
-          postId: auction.post.id,
-          auctionId: auction.id,
-          amount: normalizedAmount,
-          delta: additionalFreezeAmount,
-          mode: auction.mode,
-        },
-        relatedType: "POST",
-        relatedId: auction.post.id,
+        amount: additionalFreezeAmount,
+        message: `${settings.pointName}不足，无法继续加价`,
       })
 
       await tx.postAuctionEntry.upsert({
@@ -276,29 +267,10 @@ export async function placePostAuctionBid(input: {
         },
       })
     } else {
-      const preparedBidFreeze = await prepareScopedPointDelta({
-        scopeKey: "POST_AUCTION_BID_FREEZE",
-        baseDelta: -normalizedAmount,
+      await requireAvailableAuctionBidPoints(tx, {
         userId: bidder.id,
-      })
-
-      await applyPointDelta({
-        tx,
-        userId: bidder.id,
-        beforeBalance: bidder.points,
-        prepared: preparedBidFreeze,
-        pointName: settings.pointName,
-        insufficientMessage: `${settings.pointName}不足，无法完成本次出价`,
-        reason: "[拍卖] 公开拍卖冻结出价积分",
-        eventType: POINT_LOG_EVENT_TYPES.POST_AUCTION_BID_FREEZE,
-        eventData: {
-          postId: auction.post.id,
-          auctionId: auction.id,
-          amount: normalizedAmount,
-          mode: auction.mode,
-        },
-        relatedType: "POST",
-        relatedId: auction.post.id,
+        amount: normalizedAmount,
+        message: `${settings.pointName}不足，无法完成本次出价`,
       })
 
       if (auction.leaderUserId) {
@@ -320,17 +292,25 @@ export async function placePostAuctionBid(input: {
         })
 
         if (previousLeaderEntry && previousLeaderEntry.frozenAmount > 0) {
-          await refundAuctionPoints(tx, {
+          const chargedReservationAmount = await getAuctionChargedReservationAmount(tx, {
             userId: previousLeaderEntry.userId,
-            beforeBalance: previousLeaderEntry.user.points,
-            amount: previousLeaderEntry.frozenAmount,
             postId: auction.post.id,
-            auctionId: auction.id,
-            pointName: settings.pointName,
-            scopeKey: "POST_AUCTION_OUTBID_REFUND",
-            eventType: "POST_AUCTION_OUTBID_REFUND",
-            reason: "[拍卖] 当前领先已被超越，退回冻结积分",
           })
+          const refundAmount = Math.min(previousLeaderEntry.frozenAmount, chargedReservationAmount)
+
+          if (refundAmount > 0) {
+            await refundAuctionPoints(tx, {
+              userId: previousLeaderEntry.userId,
+              beforeBalance: previousLeaderEntry.user.points,
+              amount: refundAmount,
+              postId: auction.post.id,
+              auctionId: auction.id,
+              pointName: settings.pointName,
+              scopeKey: "POST_AUCTION_OUTBID_REFUND",
+              eventType: "POST_AUCTION_OUTBID_REFUND",
+              reason: "[拍卖] 当前领先已被超越，退回冻结积分",
+            })
+          }
 
           await tx.postAuctionEntry.update({
             where: {

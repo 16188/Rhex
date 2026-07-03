@@ -10,6 +10,7 @@ import { enqueueBackgroundJob } from "@/lib/background-jobs"
 import { createSystemNotification } from "@/lib/notification-writes"
 import { prepareScopedPointDelta, applyPointDelta } from "@/lib/point-center"
 import { POINT_LOG_EVENT_TYPES } from "@/lib/point-log-events"
+import { getAuctionChargedReservationAmount } from "@/lib/point-reservations"
 import { sleep } from "@/lib/shared/async"
 import { parseBoundedInteger } from "@/lib/shared/number-parsers"
 
@@ -242,6 +243,50 @@ export async function refundAuctionPoints(
     },
     relatedType: "POST",
     relatedId: input.postId,
+  })
+}
+
+export { getAuctionChargedReservationAmount }
+
+export async function settleAuctionWinnerPayment(
+  tx: AuctionTx,
+  input: {
+    userId: number
+    beforeBalance: number
+    amount: number
+    reservedAmount: number
+    postId: string
+    auctionId: string
+    pointName: string
+  },
+) {
+  if (input.amount <= 0) {
+    return
+  }
+
+  const prepared = await prepareScopedPointDelta({
+    scopeKey: "POST_AUCTION_WIN_SETTLEMENT",
+    baseDelta: -input.amount,
+    userId: input.userId,
+  })
+
+  await applyPointDelta({
+    tx,
+    userId: input.userId,
+    beforeBalance: input.beforeBalance,
+    prepared,
+    pointName: input.pointName,
+    reason: "[æ‹å–] æ‹å–æˆäº¤æ‰£æ¬¾",
+    eventType: POINT_LOG_EVENT_TYPES.POST_AUCTION_WIN_SETTLEMENT,
+    eventData: {
+      postId: input.postId,
+      auctionId: input.auctionId,
+      amount: input.amount,
+      reservedAmount: input.reservedAmount,
+    },
+    relatedType: "POST",
+    relatedId: input.postId,
+    reservedPointsToConsume: input.reservedAmount,
   })
 }
 

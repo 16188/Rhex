@@ -1,3 +1,4 @@
+import { getCurrentUserRecord } from "@/db/current-user"
 import { apiError, apiSuccess, createRouteHandler, requireSearchParam } from "@/lib/api-route"
 import { getPostAuctionParticipantPage } from "@/lib/post-auctions"
 
@@ -7,7 +8,12 @@ export const GET = createRouteHandler(async ({ request }) => {
   const page = Math.max(1, Number(url.searchParams.get("page") ?? "1") || 1)
   const pageSize = Math.max(1, Number(url.searchParams.get("pageSize") ?? "10") || 10)
 
-  const result = await getPostAuctionParticipantPage(postId, { page, pageSize })
+  const currentUser = await getCurrentUserRecord()
+  const result = await getPostAuctionParticipantPage(postId, {
+    page,
+    pageSize,
+    isAdmin: currentUser?.role === "ADMIN",
+  })
   if (!result) {
     apiError(404, "当前帖子没有可公开的参与记录")
   }

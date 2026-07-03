@@ -15,6 +15,7 @@ import { acquireRedisLease } from "@/lib/redis-lease"
 import {
   buildPostAuctionPendingSettlementWhere,
   enqueuePostAuctionSettlementContinuation,
+  getAuctionChargedReservationAmount,
   getUserDisplayName,
   notifyPostAuctionFailed,
   notifyPostAuctionSettled,
@@ -25,6 +26,7 @@ import {
   resolvePostAuctionSettlementBatchSize,
   resolvePostAuctionSettlementRecoveryBatchSize,
   resolvePostAuctionSettlementRecoveryIntervalMs,
+  settleAuctionWinnerPayment,
   resolveSellerIncome,
   runSerializablePostAuctionTransaction,
 } from "@/lib/post-auctions.core"
@@ -278,8 +280,13 @@ async function processPostAuctionSettlementBatch(
     })
 
     for (const entry of entries) {
+      const chargedReservationAmount = await getAuctionChargedReservationAmount(tx, {
+        userId: entry.userId,
+        postId: auction.postId,
+      })
+
       if (entry.userId === auction.winnerUserId) {
-        const refundAmount = Math.max(0, entry.frozenAmount - auction.finalPrice)
+        const refundAmount = Math.max(0, chargedReservationAmount - auction.finalPrice)
         if (refundAmount > 0) {
           await refundAuctionPoints(tx, {
             userId: entry.userId,
@@ -309,11 +316,12 @@ async function processPostAuctionSettlementBatch(
         continue
       }
 
-      if (entry.frozenAmount > 0) {
+      const refundAmount = Math.min(entry.frozenAmount, chargedReservationAmount)
+      if (refundAmount > 0) {
         await refundAuctionPoints(tx, {
           userId: entry.userId,
           beforeBalance: entry.user.points,
-          amount: entry.frozenAmount,
+          amount: refundAmount,
           postId: auction.postId,
           auctionId: auction.id,
           pointName,
@@ -429,6 +437,7 @@ async function finalizePostAuctionSettlement(auctionId: string, pointName: strin
             id: true,
             username: true,
             nickname: true,
+            points: true,
           },
         },
       },
@@ -440,6 +449,24 @@ async function finalizePostAuctionSettlement(auctionId: string, pointName: strin
 
     if (winnerEntry.frozenAmount !== auction.finalPrice) {
       apiError(409, "拍卖赢家冻结积分与成交价不一致")
+    }
+
+    const chargedReservationAmount = await getAuctionChargedReservationAmount(tx, {
+      userId: winnerEntry.userId,
+      postId: auction.post.id,
+    })
+    const winnerPaymentAmount = Math.max(0, auction.finalPrice - chargedReservationAmount)
+
+    if (winnerPaymentAmount > 0) {
+      await settleAuctionWinnerPayment(tx, {
+        userId: winnerEntry.userId,
+        beforeBalance: winnerEntry.user.points,
+        amount: winnerPaymentAmount,
+        reservedAmount: auction.finalPrice,
+        postId: auction.post.id,
+        auctionId: auction.id,
+        pointName,
+      })
     }
 
     await resolveSellerIncome(tx, {
