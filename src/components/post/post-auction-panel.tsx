@@ -62,12 +62,14 @@ export function PostAuctionPanel({
     amount: number | null
   }>>([])
   const [bidValue, setBidValue] = useState<number>(auction.minNextBidAmount)
+  const [bidInputValue, setBidInputValue] = useState(() => String(auction.minNextBidAmount))
   const fallbackLoginRedirectTarget = `/posts/${postSlug}`
   const [currentLoginRedirectTarget, setCurrentLoginRedirectTarget] = useState(fallbackLoginRedirectTarget)
   const timing = useAuctionTiming(auction, router)
 
   useEffect(() => {
     setBidValue(auction.minNextBidAmount)
+    setBidInputValue(String(auction.minNextBidAmount))
   }, [auction.minNextBidAmount])
 
   useEffect(() => {
@@ -138,6 +140,11 @@ export function PostAuctionPanel({
   async function handleBidConfirm() {
     if (!Number.isFinite(bidValue) || bidValue <= 0) {
       toast.error("请输入有效出价金额", "出价失败")
+      return
+    }
+
+    if (bidValue < sliderMin) {
+      toast.error(`出价不能低于 ${formatNumber(sliderMin)} ${pointName}`, "出价失败")
       return
     }
 
@@ -382,37 +389,64 @@ export function PostAuctionPanel({
           </div>
 
           <div className="space-y-3">
-            <Slider
-              min={sliderMin}
-              max={sliderMax}
-              step={sliderStep}
-              value={[sliderValue]}
-              className="px-1 [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:bg-foreground/10 dark:[&_[data-slot=slider-track]]:bg-white/12 [&_[data-slot=slider-range]]:bg-foreground dark:[&_[data-slot=slider-range]]:bg-white [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-thumb]]:border-2 [&_[data-slot=slider-thumb]]:border-background [&_[data-slot=slider-thumb]]:bg-background [&_[data-slot=slider-thumb]]:shadow-[0_0_0_4px_rgba(15,23,42,0.08)] dark:[&_[data-slot=slider-thumb]]:shadow-[0_0_0_4px_rgba(255,255,255,0.12)]"
-              onValueChange={(value) => {
-                const nextValue = Array.isArray(value) ? value[0] : value
-                setBidValue(typeof nextValue === "number" ? nextValue : sliderMin)
-              }}
-            />
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="font-medium tabular-nums">{formatNumber(sliderMin)}</span>
-              <span className="font-medium tabular-nums">{formatNumber(sliderMax)}</span>
-            </div>
+            {!isSealedBid ? (
+              <>
+                <Slider
+                  min={sliderMin}
+                  max={sliderMax}
+                  step={sliderStep}
+                  value={[sliderValue]}
+                  className="px-1 [&_[data-slot=slider-track]]:h-2 [&_[data-slot=slider-track]]:bg-foreground/10 dark:[&_[data-slot=slider-track]]:bg-white/12 [&_[data-slot=slider-range]]:bg-foreground dark:[&_[data-slot=slider-range]]:bg-white [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-thumb]]:border-2 [&_[data-slot=slider-thumb]]:border-background [&_[data-slot=slider-thumb]]:bg-background [&_[data-slot=slider-thumb]]:shadow-[0_0_0_4px_rgba(15,23,42,0.08)] dark:[&_[data-slot=slider-thumb]]:shadow-[0_0_0_4px_rgba(255,255,255,0.12)]"
+                  onValueChange={(value) => {
+                    const nextValue = Array.isArray(value) ? value[0] : value
+                    const normalizedValue = typeof nextValue === "number" ? nextValue : sliderMin
+                    setBidValue(normalizedValue)
+                    setBidInputValue(String(normalizedValue))
+                  }}
+                />
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="font-medium tabular-nums">{formatNumber(sliderMin)}</span>
+                  <span className="font-medium tabular-nums">{formatNumber(sliderMax)}</span>
+                </div>
+              </>
+            ) : null}
             <Input
               type="number"
               min={sliderMin}
-              step={sliderStep}
-              value={String(bidValue)}
+              step={isSealedBid ? 1 : sliderStep}
+              inputMode="numeric"
+              value={bidInputValue}
               onChange={(event) => {
-                const nextValue = Number(event.target.value)
+                const nextText = event.target.value
+                setBidInputValue(nextText)
+
+                if (nextText.trim() === "") {
+                  return
+                }
+
+                const nextValue = Number(nextText)
                 if (!Number.isFinite(nextValue)) {
                   return
                 }
-                setBidValue(Math.max(sliderMin, Math.trunc(nextValue)))
+                setBidValue(Math.trunc(nextValue))
+              }}
+              onBlur={() => {
+                if (bidInputValue.trim() === "" || !Number.isFinite(Number(bidInputValue))) {
+                  setBidValue(sliderMin)
+                  setBidInputValue(String(sliderMin))
+                  return
+                }
+
+                const normalizedValue = Math.max(sliderMin, Math.trunc(Number(bidInputValue)))
+                setBidValue(normalizedValue)
+                setBidInputValue(String(normalizedValue))
               }}
               className="h-11 rounded-full px-4"
             />
             <p className="text-xs leading-6 text-muted-foreground">
-              滑杆用于快速调整金额；如果你想出更高的价格，也可以直接在输入框中填写。
+              {isSealedBid
+                ? `直接输入出价金额，不设置上限；最低不能低于 ${formatNumber(sliderMin)} ${pointName}。`
+                : "滑杆用于快速调整金额；如果你想出更高的价格，也可以直接在输入框中填写。"}
             </p>
           </div>
         </div>
