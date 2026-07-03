@@ -8,9 +8,11 @@ import { VipActionPanel } from "@/components/vip/vip-action-panel"
 import { VipBadge } from "@/components/vip/vip-badge"
 import { Button } from "@/components/ui/rbutton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { prisma } from "@/db/client"
 import { getCurrentUser } from "@/lib/auth"
 import { buildLoginHrefWithRedirect } from "@/lib/auth-redirect"
 import { formatDateTime, formatNumber } from "@/lib/formatters"
+import { getUserPointBalanceVisibility } from "@/lib/point-reservations"
 import { getSiteSettings } from "@/lib/site-settings"
 import { getVipLevel, getVipNameClass, isVipActive } from "@/lib/vip-status"
 
@@ -83,6 +85,9 @@ export default async function VipPage() {
   const currentLevel = getVipLevel(vipUser)
   const vipActive = isVipActive(vipUser)
   const milestones = vipMilestones(settings)
+  const pointBalance = user
+    ? await getUserPointBalanceVisibility(prisma, user.id, user.points)
+    : null
 
 
 
@@ -162,7 +167,7 @@ export default async function VipPage() {
 
         <AddonSlotRenderer slot="vip.actions.before" />
         <AddonSurfaceRenderer surface="vip.actions" props={{ settings, user, vipUser }}>
-          {user ? <VipActionPanel vipMonthlyPrice={settings.vipMonthlyPrice} vipQuarterlyPrice={settings.vipQuarterlyPrice} vipYearlyPrice={settings.vipYearlyPrice} pointName={settings.pointName} userPoints={user.points} vipExpiresAt={(vipUser?.vipExpiresAt as string | Date | null | undefined)?.toString?.() ?? null} /> : null}
+          {user ? <VipActionPanel vipMonthlyPrice={settings.vipMonthlyPrice} vipQuarterlyPrice={settings.vipQuarterlyPrice} vipYearlyPrice={settings.vipYearlyPrice} pointName={settings.pointName} userPoints={pointBalance?.displayPoints ?? user.points} spendableUserPoints={pointBalance?.spendablePoints ?? user.points} vipExpiresAt={(vipUser?.vipExpiresAt as string | Date | null | undefined)?.toString?.() ?? null} /> : null}
         </AddonSurfaceRenderer>
         <AddonSlotRenderer slot="vip.actions.after" />
 

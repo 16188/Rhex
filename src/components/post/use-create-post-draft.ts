@@ -42,6 +42,7 @@ interface UseCreatePostDraftOptions {
     role?: string | null
     level: number
     points: number
+    spendablePoints?: number
     vipLevel?: number
     vipExpiresAt?: string | null
   }
@@ -175,6 +176,7 @@ export function useCreatePostDraft({
   )
   const currentVipLevel = isVipActive ? (currentUser.vipLevel ?? 0) : 0
   const canBypassAttachmentPermission = currentUser.role === "ADMIN"
+  const currentUserSpendablePoints = currentUser.spendablePoints ?? currentUser.points
   const meetsAttachmentPermission =
     currentUser.level >= attachmentFeature.minUploadLevel
     && currentVipLevel >= attachmentFeature.minUploadVipLevel
@@ -251,7 +253,7 @@ export function useCreatePostDraft({
     autoBoardPendingSelection
       ? true
       : userPostingAllowed
-        && currentUser.points >= (selectedBoard?.minPostPoints ?? 0)
+        && currentUserSpendablePoints >= (selectedBoard?.minPostPoints ?? 0)
         && currentUser.level >= (selectedBoard?.minPostLevel ?? 0)
         && currentVipLevel >= minPostVipLevel
 
@@ -426,6 +428,7 @@ export function useCreatePostDraft({
     canPostInBoard,
     currentUserSummary,
     currentUserVipClassName,
+    currentUserSpendablePoints,
     anonymousPostEnabled,
     anonymousPostPrice,
     postRedPacketEnabled,

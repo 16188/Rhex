@@ -7,6 +7,7 @@ import { withRuntimeFallback } from "@/lib/runtime-errors"
 import { normalizePositiveInteger } from "@/lib/shared/normalizers"
 import { getUserDisplayName } from "@/lib/user-display"
 import { applyHookedUserPresentationToNamedItem } from "@/lib/user-presentation-server"
+import { getUsersAuctionDisplayPointAdjustments } from "@/lib/point-reservations"
 
 const LEADERBOARD_VISIBLE_USER_STATUSES = [UserStatus.ACTIVE, UserStatus.MUTED] as const
 export const MAX_COMMUNITY_LEADERBOARD_LIMIT = 100
@@ -89,6 +90,22 @@ async function resolveLeaderboardPresentation(input: LeaderboardUserPresentation
   }
 }
 
+type PointsLeaderboardUserRow = {
+  id: number
+  username: string
+  nickname: string | null
+  avatarPath: string | null
+  points: number
+}
+
+function getDisplayPoints(row: { id: number; points: number }, adjustments: Map<number, number>) {
+  return row.points + (adjustments.get(row.id) ?? 0)
+}
+
+function ranksAheadOf(left: { id: number; points: number }, right: { id: number; points: number }) {
+  return left.points > right.points || (left.points === right.points && left.id < right.id)
+}
+
 export async function getPointsLeaderboard(
   currentUser: {
     id: number
@@ -104,7 +121,7 @@ export async function getPointsLeaderboard(
   const canShowCurrentUserRank = currentUser ? isVisibleLeaderboardStatus(currentUser.status ?? UserStatus.ACTIVE) : false
 
   return withRuntimeFallback(async () => {
-    const [totalUsers, topRows, aheadCount] = await Promise.all([
+    const [totalUsers, storedTopRows, displayAdjustments] = await Promise.all([
       prisma.user.count({
         where: visibleLeaderboardUserWhere,
       }),
@@ -123,27 +140,82 @@ export async function getPointsLeaderboard(
           points: true,
         },
       }),
-      canShowCurrentUserRank && currentUser
-        ? prisma.user.count({
-            where: {
-              ...visibleLeaderboardUserWhere,
-              OR: [
-                {
-                  points: {
-                    gt: currentUser.points,
-                  },
-                },
-                {
-                  points: currentUser.points,
-                  id: {
-                    lt: currentUser.id,
-                  },
-                },
-              ],
-            },
-          })
-        : Promise.resolve(0),
+      getUsersAuctionDisplayPointAdjustments(prisma),
     ])
+    const adjustedUserIds = Array.from(displayAdjustments.keys())
+    const adjustedRows = adjustedUserIds.length > 0
+      ? await prisma.user.findMany({
+          where: {
+            ...visibleLeaderboardUserWhere,
+            id: {
+              in: adjustedUserIds,
+            },
+          },
+          select: {
+            id: true,
+            username: true,
+            nickname: true,
+            avatarPath: true,
+            points: true,
+          },
+        })
+      : []
+    const rowMap = new Map<number, PointsLeaderboardUserRow>()
+
+    storedTopRows.forEach((row) => rowMap.set(row.id, row))
+    adjustedRows.forEach((row) => rowMap.set(row.id, row))
+
+    const topRows = Array.from(rowMap.values())
+      .map((row) => ({
+        ...row,
+        points: getDisplayPoints(row, displayAdjustments),
+      }))
+      .sort((left, right) => right.points - left.points || left.id - right.id)
+      .slice(0, limit)
+
+    const currentDisplayPoints = currentUser
+      ? currentUser.points + (displayAdjustments.get(currentUser.id) ?? 0)
+      : 0
+    const baseAheadCount = canShowCurrentUserRank && currentUser
+      ? await prisma.user.count({
+          where: {
+            ...visibleLeaderboardUserWhere,
+            OR: [
+              {
+                points: {
+                  gt: currentDisplayPoints,
+                },
+              },
+              {
+                points: currentDisplayPoints,
+                id: {
+                  lt: currentUser.id,
+                },
+              },
+            ],
+          },
+        })
+      : 0
+    const adjustedAheadCount = canShowCurrentUserRank && currentUser
+      ? adjustedRows.filter((row) => {
+          const displayRow = {
+            id: row.id,
+            points: getDisplayPoints(row, displayAdjustments),
+          }
+          const currentDisplayRow = {
+            id: currentUser.id,
+            points: currentDisplayPoints,
+          }
+          const storedRow = {
+            id: row.id,
+            points: row.points,
+          }
+
+          return ranksAheadOf(displayRow, currentDisplayRow)
+            && !ranksAheadOf(storedRow, currentDisplayRow)
+        }).length
+      : 0
+    const aheadCount = baseAheadCount + adjustedAheadCount
 
     const entries = await Promise.all(
       topRows.map(async (row, index) => {
@@ -180,7 +252,7 @@ export async function getPointsLeaderboard(
           userId: currentUser.id,
           username: currentUser.username,
           rank: aheadCount + 1,
-          points: currentUser.points,
+          points: currentDisplayPoints,
         }
       : null)
 

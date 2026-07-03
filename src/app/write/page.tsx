@@ -6,6 +6,7 @@ import { CreatePostForm } from "@/components/post/create-post-form"
 import { SiteHeader } from "@/components/site-header"
 import { Button } from "@/components/ui/rbutton"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { prisma } from "@/db/client"
 import { buildUserLevelThresholdOptions, buildVipLevelThresholdOptions } from "@/lib/access-threshold-options"
 import { getCurrentUser } from "@/lib/auth"
 import { buildLoginHrefWithRedirect } from "@/lib/auth-redirect"
@@ -14,6 +15,7 @@ import { getLevelDefinitions } from "@/lib/level-system"
 import { getAutoCategorizeConfig } from "@/lib/ai/capabilities/auto-categorize-config"
 import { parsePostContentDocument } from "@/lib/post-content"
 import { replacePostCardEmbedTokensWithUrls } from "@/lib/post-card-embed"
+import { getUserPointBalanceVisibility } from "@/lib/point-reservations"
 import { parsePostRewardPoolConfigFromContent } from "@/lib/post-red-packets"
 import { getEditablePostBySlug } from "@/lib/posts"
 import { normalizeLotteryRedemptionCodes } from "@/lib/lottery-prizes"
@@ -124,6 +126,7 @@ export default async function WritePage(props: PageProps<"/write">) {
       </div>
     )
   }
+  const pointBalance = await getUserPointBalanceVisibility(prisma, user.id, user.points)
 
   const editingPost = mode === "edit" && editingSlug
     ? await getEditablePostBySlug(editingSlug)
@@ -196,7 +199,8 @@ export default async function WritePage(props: PageProps<"/write">) {
                       nickname: user.nickname,
                       role: user.role,
                       level: user.level,
-                      points: user.points,
+                      points: pointBalance.displayPoints,
+                      spendablePoints: pointBalance.spendablePoints,
                       vipLevel: user.vipLevel,
                       vipExpiresAt: user.vipExpiresAt?.toISOString?.() ? user.vipExpiresAt.toISOString() : (user.vipExpiresAt as unknown as string | null),
                     }}
@@ -339,7 +343,8 @@ export default async function WritePage(props: PageProps<"/write">) {
                     nickname: user.nickname,
                     role: user.role,
                     level: user.level,
-                    points: user.points,
+                    points: pointBalance.displayPoints,
+                    spendablePoints: pointBalance.spendablePoints,
                     vipLevel: user.vipLevel,
                     vipExpiresAt: user.vipExpiresAt?.toISOString?.() ? user.vipExpiresAt.toISOString() : (user.vipExpiresAt as unknown as string | null),
                   }}

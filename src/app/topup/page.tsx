@@ -7,8 +7,10 @@ import { SiteHeader } from "@/components/site-header"
 import { PointsTopupCard } from "@/components/points-topup-card"
 import { RedeemCodeCard } from "@/components/redeem-code-card"
 import { Card, CardContent } from "@/components/ui/card"
+import { prisma } from "@/db/client"
 import { getCurrentUser } from "@/lib/auth"
 import { getEnabledPointTopupPackages, inferCheckoutClientType } from "@/lib/payment-gateway"
+import { getUserDisplayPointBalance } from "@/lib/point-reservations"
 import { buildMetadataKeywords } from "@/lib/seo"
 import { getSiteSettings } from "@/lib/site-settings"
 
@@ -37,6 +39,7 @@ export default async function TopupPage() {
   if (!currentUser) {
     redirect("/login?redirect=/topup")
   }
+  const currentDisplayPoints = await getUserDisplayPointBalance(prisma, currentUser.id, currentUser.points)
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,7 +79,7 @@ export default async function TopupPage() {
               <AddonSurfaceRenderer surface="topup.redeem" props={{ currentUser, settings }}>
                 <RedeemCodeCard
                   pointName={settings.pointName}
-                  currentPoints={currentUser.points}
+                  currentPoints={currentDisplayPoints}
                   helpLinkEnabled={settings.redeemCodeHelpEnabled}
                   helpLinkTitle={settings.redeemCodeHelpTitle}
                   helpLinkUrl={settings.redeemCodeHelpUrl}

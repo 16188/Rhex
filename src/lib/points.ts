@@ -1,3 +1,4 @@
+import { prisma } from "@/db/client"
 import { ChangeType, type Prisma } from "@/db/types"
 import { normalizePointLogEventType, type PointLogEventDataValue, type PointLogEventType } from "@/lib/point-log-events"
 
@@ -6,6 +7,7 @@ import { getPointsLeaderboard } from "@/lib/community-leaderboards"
 import { decodeTimestampCursor, encodeTimestampCursor } from "@/lib/cursor-pagination"
 import { getBusinessDayRange, getLocalDateKey, getMonthKey, getMonthTitle } from "@/lib/formatters"
 import { resolvePointLogAuditPresentation, type PointLogEffectMetadata, type PointLogTaxMetadata } from "@/lib/point-log-audit"
+import { getUserDisplayPointBalance } from "@/lib/point-reservations"
 
 import { withRuntimeFallback } from "@/lib/runtime-errors"
 import { normalizePositiveInteger } from "@/lib/shared/normalizers"
@@ -258,7 +260,7 @@ export async function getUserPointsDashboard(input: {
   const todayRange = getBusinessDayRange()
 
   return withRuntimeFallback(async () => {
-    const [monthLogs, todayLogs, leaderboard] = await Promise.all([
+    const [monthLogs, todayLogs, leaderboard, displayPoints] = await Promise.all([
       listUserPointLogsInRange({
         userId: input.userId,
         start: monthRange.start,
@@ -283,6 +285,7 @@ export async function getUserPointsDashboard(input: {
       }, {
         limit: 1,
       }),
+      getUserDisplayPointBalance(prisma, input.userId, input.points),
     ])
 
     const dayMap = new Map<string, UserPointsCalendarEntry>()
@@ -314,7 +317,7 @@ export async function getUserPointsDashboard(input: {
     }
 
     const todayChange = todayLogs.reduce((sum, log) => sum + resolveSignedPointChange(log), 0)
-    const startBalance = input.points - todayChange
+    const startBalance = displayPoints - todayChange
     const todayChangeRate = startBalance > 0 ? (todayChange / startBalance) * 100 : null
     const incomeChart = buildChartSlices(monthLogs, ChangeType.INCREASE, ["#3b82f6", "#10b981", "#f59e0b", "#14b8a6", "#8b5cf6", "#22c55e"])
     const expenseChart = buildChartSlices(monthLogs, ChangeType.DECREASE, ["#f43f5e", "#f97316", "#eab308", "#8b5cf6", "#06b6d4", "#64748b"])
@@ -324,7 +327,7 @@ export async function getUserPointsDashboard(input: {
       monthTitle: getMonthTitle(month),
       todayKey: todayRange.dayKey,
       rank: leaderboard.currentUserEntry?.rank ?? null,
-      currentBalance: input.points,
+      currentBalance: displayPoints,
       todayChange,
       todayChangeRate,
       monthIncome,

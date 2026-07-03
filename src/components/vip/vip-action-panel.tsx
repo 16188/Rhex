@@ -16,6 +16,7 @@ interface VipActionPanelProps {
   vipYearlyPrice: number
   pointName: string
   userPoints?: number
+  spendableUserPoints?: number
   vipExpiresAt?: string | null
 }
 
@@ -37,7 +38,7 @@ function createVipRequestId() {
   return `vip-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
 }
 
-export function VipActionPanel({ vipMonthlyPrice, vipQuarterlyPrice, vipYearlyPrice, pointName, userPoints = 0, vipExpiresAt = null }: VipActionPanelProps) {
+export function VipActionPanel({ vipMonthlyPrice, vipQuarterlyPrice, vipYearlyPrice, pointName, userPoints = 0, spendableUserPoints = userPoints, vipExpiresAt = null }: VipActionPanelProps) {
 
   const vipActive = isVipActive({ vipExpiresAt })
 
@@ -106,9 +107,9 @@ export function VipActionPanel({ vipMonthlyPrice, vipQuarterlyPrice, vipYearlyPr
           <p className="text-sm text-muted-foreground">当前{pointName}：{formatNumber(userPoints)}{vipActive ? "，当前已是 VIP，可继续续期。" : "，可直接购买开通 VIP。"}</p>
         </div>
         <div className="mt-4 space-y-3 text-sm text-muted-foreground">
-          <div className="flex items-center justify-between rounded-[18px] border border-border px-4 py-3 dark:bg-secondary/20"><span>月卡 30 天 = VIP1</span><Button onClick={() => runAction("purchase.month")} disabled={loading !== "" || userPoints < vipMonthlyPrice}>{loading === "purchase.month" ? "处理中..." : `${formatNumber(vipMonthlyPrice)} ${pointName}`}</Button></div>
-          <div className="flex items-center justify-between rounded-[18px] border border-border px-4 py-3 dark:bg-secondary/20"><span>季卡 90 天 = VIP2</span><Button onClick={() => runAction("purchase.quarter")} disabled={loading !== "" || userPoints < vipQuarterlyPrice}>{loading === "purchase.quarter" ? "处理中..." : `${formatNumber(vipQuarterlyPrice)} ${pointName}`}</Button></div>
-          <div className="flex items-center justify-between rounded-[18px] border border-border px-4 py-3 dark:bg-secondary/20"><span>年卡 365 天 = VIP3</span><Button onClick={() => runAction("purchase.year")} disabled={loading !== "" || userPoints < vipYearlyPrice}>{loading === "purchase.year" ? "处理中..." : `${formatNumber(vipYearlyPrice)} ${pointName}`}</Button></div>
+          <div className="flex items-center justify-between rounded-[18px] border border-border px-4 py-3 dark:bg-secondary/20"><span>月卡 30 天 = VIP1</span><Button onClick={() => runAction("purchase.month")} disabled={loading !== "" || spendableUserPoints < vipMonthlyPrice}>{loading === "purchase.month" ? "处理中..." : `${formatNumber(vipMonthlyPrice)} ${pointName}`}</Button></div>
+          <div className="flex items-center justify-between rounded-[18px] border border-border px-4 py-3 dark:bg-secondary/20"><span>季卡 90 天 = VIP2</span><Button onClick={() => runAction("purchase.quarter")} disabled={loading !== "" || spendableUserPoints < vipQuarterlyPrice}>{loading === "purchase.quarter" ? "处理中..." : `${formatNumber(vipQuarterlyPrice)} ${pointName}`}</Button></div>
+          <div className="flex items-center justify-between rounded-[18px] border border-border px-4 py-3 dark:bg-secondary/20"><span>年卡 365 天 = VIP3</span><Button onClick={() => runAction("purchase.year")} disabled={loading !== "" || spendableUserPoints < vipYearlyPrice}>{loading === "purchase.year" ? "处理中..." : `${formatNumber(vipYearlyPrice)} ${pointName}`}</Button></div>
 
 
         </div>

@@ -1,5 +1,7 @@
 import { apiSuccess, createUserRouteHandler, readJsonBody, requireStringField } from "@/lib/api-route"
 import { executeAddonActionHook } from "@/addons-host/runtime/hooks"
+import { prisma } from "@/db/client"
+import { getUserDisplayPointBalance } from "@/lib/point-reservations"
 import { redeemPointsCode } from "@/lib/redeem-codes"
 import { logRouteWriteSuccess } from "@/lib/route-metadata"
 import { revalidateUserSurfaceCache } from "@/lib/user-surface"
@@ -59,11 +61,12 @@ export const POST = createUserRouteHandler(async ({ request, currentUser }) => {
     })
 
     revalidateUserSurfaceCache(currentUser.id)
+    const displayBalance = await getUserDisplayPointBalance(prisma, currentUser.id, redeemCode.balance)
 
     return apiSuccess({
       code: redeemCode.code,
       points: redeemCode.points,
-      balance: redeemCode.balance,
+      balance: displayBalance,
     }, "兑换成功")
   })
 }, {

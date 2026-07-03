@@ -1,8 +1,10 @@
 import { listVisibleTaskDefinitions } from "@/db/task-definition-queries"
 import { listUserTaskProgressesByUserId } from "@/db/task-progress-queries"
 import { TaskCategory, TaskConditionType, type TaskDefinition } from "@/db/types"
+import { prisma } from "@/db/client"
 import { getCurrentUser } from "@/lib/auth"
 import { getUserCheckInStreakSummary } from "@/lib/check-in-streak-service"
+import { getUserDisplayPointBalance } from "@/lib/point-reservations"
 import { buildTaskConditionSummary, getTaskCategoryLabel, getTaskCycleTypeLabel } from "@/lib/task-condition-templates"
 import { getTaskCycleKey } from "@/lib/task-center-cycle"
 import { ensureTaskCenterSeeded } from "@/lib/task-center-defaults"
@@ -178,11 +180,12 @@ export async function getTaskCenterPageData(): Promise<TaskCenterPageData | null
 
   await ensureTaskCenterSeeded()
 
-  const [tasks, progresses, streakSummary, siteSettings] = await Promise.all([
+  const [tasks, progresses, streakSummary, siteSettings, displayPoints] = await Promise.all([
     listVisibleTaskDefinitions(),
     listUserTaskProgressesByUserId({ userId: currentUser.id }),
     getUserCheckInStreakSummary(currentUser.id),
     getSiteSettings(),
+    getUserDisplayPointBalance(prisma, currentUser.id, currentUser.points),
   ])
 
   const progressMap = new Map<string, Awaited<ReturnType<typeof listUserTaskProgressesByUserId>>[number]>()
@@ -209,7 +212,7 @@ export async function getTaskCenterPageData(): Promise<TaskCenterPageData | null
     pointName: siteSettings.pointName,
     profile: {
       displayName: currentUser.nickname ?? currentUser.username,
-      points: currentUser.points,
+      points: displayPoints,
       level: currentUser.level,
       vipLabel: isVipActive(currentUser) ? `VIP${getVipLevel(currentUser)}` : "非 VIP",
     },

@@ -1,6 +1,7 @@
 import { unstable_cache, revalidateTag } from "next/cache"
 import { cache } from "react"
 
+import { prisma } from "@/db/client"
 import { getUnreadConversationCount } from "@/db/message-read-queries"
 import { countUnreadNotifications } from "@/db/notification-read-queries"
 import {
@@ -15,6 +16,7 @@ import { getUserCheckInStreakSummary } from "@/lib/check-in-streak-service"
 import { getLocalDateKey } from "@/lib/date-key"
 import { getCachedUnreadMessageCount } from "@/lib/message-redis-cache"
 import { getCachedUnreadNotificationCount } from "@/lib/notification-redis-cache"
+import { getUserDisplayPointBalance } from "@/lib/point-reservations"
 import { getSiteSettings } from "@/lib/site-settings"
 
 export interface UserSurfaceSnapshot {
@@ -76,12 +78,13 @@ async function readUserSurfaceSnapshot(userId: number, todayKey: string): Promis
       }
     : await getUserCheckInStreakSummary(userId)
 
-  const [settings, unreadNotificationCount, boardCount, favoriteCount, checkInRecord] = await Promise.all([
+  const [settings, unreadNotificationCount, boardCount, favoriteCount, checkInRecord, displayPoints] = await Promise.all([
     getSiteSettings(),
     getCachedUnreadNotificationCount(userId, () => countUnreadNotifications(userId)),
     countUserSurfaceBoardFollows(userId),
     countUserSurfaceFavorites(userId),
     findUserSurfaceCheckInRecord(userId, todayKey),
+    getUserDisplayPointBalance(prisma, userId, user.points),
   ])
   const unreadMessageCount = settings.messageEnabled
     ? await getCachedUnreadMessageCount(userId, () => getUnreadConversationCount(userId))
@@ -95,7 +98,7 @@ async function readUserSurfaceSnapshot(userId: number, todayKey: string): Promis
     followerCount: user._count.followedByUsers,
     postCount: user.postCount,
     receivedLikeCount: user.likeReceivedCount,
-    points: user.points,
+    points: displayPoints,
     checkedInToday: Boolean(checkInRecord),
     currentCheckInStreak: streakSummary.currentStreak,
     maxCheckInStreak: streakSummary.maxStreak,

@@ -44,6 +44,7 @@ export function CreatePostFormModals({
     canManageAttachments,
     canAddAttachments,
     currentUser,
+    currentUserSpendablePoints,
     attachmentFeature,
     isEditMode,
     postRedPacketMaxPoints,
@@ -139,7 +140,7 @@ export function CreatePostFormModals({
         jackpotMinInitialPoints={postJackpotMinInitialPoints}
         jackpotMaxInitialPoints={postJackpotMaxInitialPoints}
         jackpotReplyIncrementPoints={draftController.postJackpotReplyIncrementPoints}
-        currentUserPoints={currentUser.points}
+        currentUserPoints={currentUserSpendablePoints}
         value={{
           enabled: draft.redPacketEnabled,
           mode: draft.redPacketMode,

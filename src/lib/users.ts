@@ -1,4 +1,5 @@
 import { resolvePagination } from "@/db/helpers"
+import { prisma } from "@/db/client"
 import { countSuccessfulInvitesByInviterInRange, countUserPublicPostsByUsername, countVisibleUserRepliesByUsername, findInviteLeaderboardGroups, findInviteLeaderboardUsers, findUserAccountSettingsById, findUserPostsByUsername, findUserProfileByUsername, findUserRepliesByUsername } from "@/db/user-queries"
 import { getDisplayedBadgesForUser } from "@/lib/badges"
 import { getCurrentSessionActor } from "@/lib/auth"
@@ -6,6 +7,7 @@ import { getLevelBadgeData } from "@/lib/level-badge"
 import { getAnonymousMaskDisplayIdentity } from "@/lib/post-anonymous"
 import { mapListPost } from "@/lib/post-map"
 import { getBusinessDayRange } from "@/lib/formatters"
+import { getUserDisplayPointBalance } from "@/lib/point-reservations"
 import type { UserProfileVisibility } from "@/lib/user-profile-settings"
 import {
   applyHookedUserPresentationToNamedItem,
@@ -115,9 +117,10 @@ export async function getUserProfile(username: string): Promise<SiteUserProfile 
       return null
     }
 
-    const [levelBadge, displayedBadges] = await Promise.all([
+    const [levelBadge, displayedBadges, displayPoints] = await Promise.all([
       getLevelBadgeData(user.level),
       getDisplayedBadgesForUser(Number(user.id)),
+      getUserDisplayPointBalance(prisma, Number(user.id), user.points),
     ])
     const approvedVerification = user.verificationApplications?.[0]
     const profileSettings = resolveUserProfileSettings(user.signature)
@@ -151,7 +154,7 @@ export async function getUserProfile(username: string): Promise<SiteUserProfile 
       levelName: levelBadge.name,
       levelColor: levelBadge.color,
       levelIcon: levelBadge.icon,
-      points: user.points,
+      points: displayPoints,
       vipLevel: user.vipLevel,
       vipExpiresAt,
       inviteCount: user.inviteCount,
