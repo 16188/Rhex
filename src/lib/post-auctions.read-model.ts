@@ -131,6 +131,12 @@ export async function getPostAuctionSummary(
     isLeader: Boolean(bidAmountsVisible && auction.leaderUserId === entry.userId),
   }))
 
+  const minNextBidAmount = auction.mode === PostAuctionMode.SEALED_BID
+    ? auction.startPrice
+    : auction.leaderBidAmount
+      ? auction.leaderBidAmount + Math.max(1, auction.incrementStep)
+      : auction.startPrice
+
   return {
     id: auction.id,
     mode: auction.mode,
@@ -168,15 +174,17 @@ export async function getPostAuctionSummary(
     settledAt: auction.settledAt?.toISOString() ?? null,
     hasStarted,
     hasEnded,
-    minNextBidAmount: auction.leaderBidAmount
-      ? auction.leaderBidAmount + Math.max(1, auction.incrementStep)
-      : auction.startPrice,
+    minNextBidAmount,
     viewerIsSeller: isSeller,
     viewerHasJoined: Boolean(viewerEntry),
     viewerBidAmount: viewerEntry?.currentBidAmount ?? null,
     viewerFrozenAmount: viewerEntry?.frozenAmount ?? null,
     viewerStatus: viewerEntry?.status ?? null,
-    viewerIsLeader: Boolean(currentUserId && auction.leaderUserId === currentUserId),
+    viewerIsLeader: Boolean(
+      currentUserId
+      && auction.leaderUserId === currentUserId
+      && (auction.mode === PostAuctionMode.OPEN_ASCENDING || viewerCanViewSealedBids)
+    ),
     viewerCanBid: Boolean(
       currentUserId
       && !isSeller

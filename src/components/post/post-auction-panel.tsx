@@ -355,7 +355,7 @@ export function PostAuctionPanel({
         title={isSealedBid ? "参与竞拍" : isLeadingOpenAuctionBidder ? "继续加价" : "参与拍卖"}
         description={
           isSealedBid
-            ? `当前为${auction.pricingRuleLabel}，每位用户只能出价一次，请谨慎填写。`
+            ? `当前为${auction.pricingRuleLabel}，最低可出价为 ${formatNumber(auction.minNextBidAmount)} ${pointName}，每位用户只能出价一次，请谨慎填写。`
             : isLeadingOpenAuctionBidder
               ? `你当前处于领先位置，如需继续拉开差距，请输入新的加价金额。当前最低有效出价为 ${formatNumber(auction.minNextBidAmount)} ${pointName}。`
               : `请输入你的出价金额。当前最低有效出价为 ${formatNumber(auction.minNextBidAmount)} ${pointName}。`
@@ -654,7 +654,7 @@ function resolveAuctionNoticeText({
   }
 
   if (isSealedBid) {
-    return `${auction.pricingRuleLabel}，同价按出价时间先后决定优先顺序。`
+    return `${auction.pricingRuleLabel}，最低可出价为 ${formatNumber(auction.minNextBidAmount)} ${pointName}，同价按出价时间先后决定优先顺序。`
   }
 
   if (!timing.hasEnded) {
