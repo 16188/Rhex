@@ -15,35 +15,138 @@ export function buildMetadataKeywords(siteKeywords: string[], ...keywordGroups: 
     .filter((item, index, items) => items.findIndex((candidate) => candidate.toLowerCase() === item.toLowerCase()) === index)
 }
 
-export async function buildArticleJsonLd({
+export interface DiscussionForumCommentJsonLdInput {
+  text: string
+  publishedAt: string
+  author: {
+    name: string
+    url?: string
+  }
+  url?: string
+  likeCount?: number
+  isAiGenerated?: boolean
+  replies?: DiscussionForumCommentJsonLdInput[]
+}
+
+function normalizeInteractionCount(value: number | undefined) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.floor(value))
+    : undefined
+}
+
+function buildInteractionStatistic(interactionType: string, count: number | undefined) {
+  const normalizedCount = normalizeInteractionCount(count)
+  if (normalizedCount === undefined) {
+    return undefined
+  }
+
+  return {
+    "@type": "InteractionCounter",
+    interactionType,
+    userInteractionCount: normalizedCount,
+  }
+}
+
+function buildDiscussionForumAuthor(author: DiscussionForumCommentJsonLdInput["author"]) {
+  return {
+    "@type": "Person",
+    name: author.name,
+    ...(author.url ? { url: author.url } : {}),
+  }
+}
+
+function buildDiscussionForumComment(comment: DiscussionForumCommentJsonLdInput): Record<string, unknown> {
+  const replies = (comment.replies ?? [])
+    .filter((reply) => reply.text.trim())
+    .map(buildDiscussionForumComment)
+  const likeStatistic = buildInteractionStatistic("https://schema.org/LikeAction", comment.likeCount)
+
+  return {
+    "@type": "Comment",
+    text: comment.text.trim(),
+    datePublished: comment.publishedAt,
+    author: buildDiscussionForumAuthor(comment.author),
+    ...(comment.url ? { url: comment.url } : {}),
+    ...(comment.isAiGenerated
+      ? { digitalSourceType: "https://schema.org/TrainedAlgorithmicMediaDigitalSource" }
+      : {}),
+    ...(likeStatistic ? { interactionStatistic: likeStatistic } : {}),
+    ...(replies.length > 0 ? { commentCount: replies.length, comment: replies } : {}),
+  }
+}
+
+export async function buildDiscussionForumPostingJsonLd({
   title,
-  description,
+  text,
+  image,
   publishedAt,
   author,
   url,
+  section,
+  commentCount,
+  likeCount,
+  viewCount,
+  isAiGenerated,
+  comments = [],
 }: {
   title: string
-  description: string
+  text: string
+  image?: string
   publishedAt: string
-  author: string
+  author: DiscussionForumCommentJsonLdInput["author"]
   url: string
+  section?: {
+    name: string
+    url: string
+  }
+  commentCount: number
+  likeCount?: number
+  viewCount?: number
+  isAiGenerated?: boolean
+  comments?: DiscussionForumCommentJsonLdInput[]
 }) {
-  const [titleResult, descriptionResult] = await Promise.all([
-    executeAddonWaterfallHook("seo.meta.title", title),
-    executeAddonWaterfallHook("seo.meta.description", description),
-  ])
+  const normalizedText = text.trim()
+  if (!normalizedText && !image) {
+    return null
+  }
+
+  const titleResult = await executeAddonWaterfallHook("seo.meta.title", title)
+  const interactionStatistic = [
+    buildInteractionStatistic("https://schema.org/CommentAction", commentCount),
+    buildInteractionStatistic("https://schema.org/LikeAction", likeCount),
+    buildInteractionStatistic("https://schema.org/ViewAction", viewCount),
+  ].filter((item) => item !== undefined)
+  const structuredComments = comments
+    .filter((comment) => comment.text.trim())
+    .map(buildDiscussionForumComment)
 
   return {
     "@context": "https://schema.org",
-    "@type": "Article",
+    "@type": "DiscussionForumPosting",
     headline: titleResult.value,
-    description: descriptionResult.value,
+    ...(normalizedText ? { text: normalizedText } : {}),
+    ...(image ? { image } : {}),
     datePublished: publishedAt,
-    author: {
-      "@type": "Person",
-      name: author,
-    },
+    author: buildDiscussionForumAuthor(author),
     mainEntityOfPage: url,
+    url,
+    commentCount: normalizeInteractionCount(commentCount) ?? 0,
+    ...(interactionStatistic.length > 0 ? { interactionStatistic } : {}),
+    ...(section ? {
+      isPartOf: {
+        "@type": "WebPage",
+        name: section.name,
+        url: section.url,
+      },
+    } : {}),
+    ...(isAiGenerated
+      ? { digitalSourceType: "https://schema.org/TrainedAlgorithmicMediaDigitalSource" }
+      : {}),
+    ...(structuredComments.length > 0 ? { comment: structuredComments } : {}),
   }
+}
+
+export function serializeJsonLd(value: unknown) {
+  return JSON.stringify(value).replace(/</g, "\\u003c")
 }
 

@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { MessageCircle } from "lucide-react"
 import { cookies } from "next/headers"
-import Script from "next/script"
 import { notFound } from "next/navigation"
 
 
@@ -36,7 +35,13 @@ import { buildLoginHrefWithRedirect } from "@/lib/auth-redirect"
 import { PinScope } from "@/db/types"
 import { checkBoardPermission, getBoardAccessContextByPostId } from "@/lib/board-access"
 import { getBoards } from "@/lib/boards"
-import { getCommentsByPostId, getUserReplyCountByPost } from "@/lib/comments"
+import {
+  getCommentsByPostId,
+  getUserReplyCountByPost,
+  type SiteCommentItem,
+  type SiteFlatCommentItem,
+  type SiteCommentReplyItem,
+} from "@/lib/comments"
 import { isUserFollowingTarget } from "@/lib/follows"
 import { resolveSidebarUser } from "@/lib/home-sidebar"
 import { checkPostAccessPermission, mergeAccessPermissions, resolvePostAccessRequirements } from "@/lib/post-access"
@@ -56,7 +61,12 @@ import { isPostOpenForReplies, isPublicReadablePostStatus } from "@/lib/post-typ
 
 import { getPurchasedPostBlockBuyerCounts, getPurchasedPostBlockIds } from "@/lib/post-unlock"
 
-import { buildArticleJsonLd, buildMetadataKeywords } from "@/lib/seo"
+import {
+  buildDiscussionForumPostingJsonLd,
+  buildMetadataKeywords,
+  serializeJsonLd,
+  type DiscussionForumCommentJsonLdInput,
+} from "@/lib/seo"
 import { readSearchParam } from "@/lib/search-params"
 import { getSiteSettings } from "@/lib/site-settings"
 import { BROWSING_PREFERENCES_COOKIE_NAME, resolveBrowsingPreferencesSnapshot } from "@/lib/browsing-preferences"
@@ -91,6 +101,52 @@ function buildUrlSearchParams(
   }
 
   return searchParams
+}
+
+function toAbsoluteUrl(value: string | null | undefined, baseUrl: string) {
+  if (!value) {
+    return undefined
+  }
+
+  try {
+    return new URL(value, baseUrl).toString()
+  } catch {
+    return undefined
+  }
+}
+
+function buildDiscussionCommentJsonLdInput(
+  comment: SiteCommentItem | SiteCommentReplyItem,
+  canonicalUrl: string,
+  commentPageUrl: string,
+  replies: SiteCommentReplyItem[] = [],
+): DiscussionForumCommentJsonLdInput | null {
+  if (comment.status !== "NORMAL" || comment.isPrivate || !comment.content.trim()) {
+    return null
+  }
+
+  const commentUrl = new URL(commentPageUrl)
+  commentUrl.hash = `comment-${comment.id}`
+  const authorUrl = comment.authorIsAnonymous
+    ? undefined
+    : toAbsoluteUrl(`/users/${encodeURIComponent(comment.authorUsername)}`, canonicalUrl)
+  const structuredReplies = replies.flatMap((reply) => {
+    const structuredReply = buildDiscussionCommentJsonLdInput(reply, canonicalUrl, commentPageUrl)
+    return structuredReply ? [structuredReply] : []
+  })
+
+  return {
+    text: comment.content,
+    publishedAt: comment.createdAtRaw,
+    author: {
+      name: comment.author,
+      ...(authorUrl ? { url: authorUrl } : {}),
+    },
+    url: commentUrl.toString(),
+    likeCount: comment.likes,
+    isAiGenerated: comment.authorIsAiAgent,
+    replies: structuredReplies,
+  }
 }
 
 export async function generateMetadata(props: PageProps<"/posts/[slug]">): Promise<Metadata> {
@@ -191,6 +247,10 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
   const postViewPermission = checkPostAccessPermission(currentUser, resolvePostAccessRequirements(basePost))
   const mergedViewPermission = mergeAccessPermissions(viewPermission, postViewPermission)
   const canViewPublicPost = isPublicReadablePostStatus(basePost.status)
+  const publicViewPermission = boardAccessContext ? checkBoardPermission(null, boardAccessContext.settings, "view") : { allowed: true, message: "" }
+  const publicPostViewPermission = checkPostAccessPermission(null, resolvePostAccessRequirements(basePost))
+  const canExposePostStructuredData = canViewPublicPost
+    && mergeAccessPermissions(publicViewPermission, publicPostViewPermission).allowed
   const canReplyToPost = isPostOpenForReplies(basePost.status)
   const canViewRestrictedPost = canViewPublicPost && (mergedViewPermission.allowed || isOwnerOrManager)
   const canViewPostContent = canViewRestrictedPost || canViewModeratedPost
@@ -411,14 +471,68 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
     ),
   )
 
-  const jsonLd = await buildArticleJsonLd({
-
-    title: displayPost.title,
-    description: displayPost.description,
-    publishedAt: displayPost.publishedAt,
-    author: displayPost.author,
-    url: canonicalUrl,
-  })
+  const publicPostText = [
+    displayPostWithAiIndicator.contentMarkdown,
+    ...(displayPostWithAiIndicator.appendices ?? []).map((appendix) => appendix.content),
+  ]
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join("\n\n")
+  const commentPageUrl = new URL(canonicalUrl)
+  commentPageUrl.searchParams.set("sort", currentSort)
+  commentPageUrl.searchParams.set("page", String(currentPage))
+  commentPageUrl.searchParams.set("view", currentCommentView)
+  const canExposeCommentsStructuredData = canExposePostStructuredData
+    && settings.guestCanViewComments
+    && !displayPostWithAiIndicator.commentsVisibleToAuthorOnly
+  const structuredComments = canExposeCommentsStructuredData
+    ? commentResult.viewMode === "flat"
+      ? commentResult.flatItems.flatMap((entry: SiteFlatCommentItem) => {
+          const comment = entry.type === "comment" ? entry.comment : entry.reply
+          const structuredComment = buildDiscussionCommentJsonLdInput(comment, canonicalUrl, commentPageUrl.toString())
+          return structuredComment ? [structuredComment] : []
+        })
+      : commentResult.items.flatMap((comment: SiteCommentItem) => {
+          const structuredComment = buildDiscussionCommentJsonLdInput(
+            comment,
+            canonicalUrl,
+            commentPageUrl.toString(),
+            comment.replies,
+          )
+          return structuredComment ? [structuredComment] : []
+        })
+    : []
+  const structuredPublishedAt = displayPostWithAiIndicator.publishedAtRaw ?? displayPostWithAiIndicator.createdAt
+  const structuredAuthorUrl = displayPostWithAiIndicator.isAnonymous
+    ? undefined
+    : toAbsoluteUrl(
+        `/users/${encodeURIComponent(displayPostWithAiIndicator.authorUsername ?? displayPostWithAiIndicator.author)}`,
+        canonicalUrl,
+      )
+  const structuredBoardUrl = displayPostWithAiIndicator.boardSlug
+    ? toAbsoluteUrl(`/boards/${encodeURIComponent(displayPostWithAiIndicator.boardSlug)}`, canonicalUrl)
+    : undefined
+  const jsonLd = canExposePostStructuredData && structuredPublishedAt
+    ? await buildDiscussionForumPostingJsonLd({
+        title: displayPostWithAiIndicator.title,
+        text: publicPostText,
+        image: toAbsoluteUrl(displayPostWithAiIndicator.coverImage, canonicalUrl),
+        publishedAt: structuredPublishedAt,
+        author: {
+          name: displayPostWithAiIndicator.author,
+          ...(structuredAuthorUrl ? { url: structuredAuthorUrl } : {}),
+        },
+        url: canonicalUrl,
+        section: structuredBoardUrl
+          ? { name: displayPostWithAiIndicator.board, url: structuredBoardUrl }
+          : undefined,
+        commentCount: displayPostWithAiIndicator.stats.comments,
+        likeCount: displayPostWithAiIndicator.stats.likes,
+        viewCount: displayPostWithAiIndicator.stats.views,
+        isAiGenerated: displayPostWithAiIndicator.authorIsAiAgent,
+        comments: structuredComments,
+      })
+    : null
   const [renderedContentBlockHtmlById, renderedAppendices] = await Promise.all([
     Promise.all(
       (displayPost.contentBlocks ?? []).map(async (block) => {
@@ -479,9 +593,13 @@ export default async function PostPage(props: PageProps<"/posts/[slug]">) {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <Script id={`post-jsonld-${displayPost.id}`} type="application/ld+json">
-        {JSON.stringify(jsonLd)}
-      </Script>
+      {jsonLd ? (
+        <script
+          id={`post-jsonld-${displayPost.id}`}
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
+        />
+      ) : null}
 
       <main className="mx-auto max-w-[1200px] px-1">
         <ForumPageShell

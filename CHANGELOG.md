@@ -2,6 +2,7 @@
 
 ## 2026-07-02
 
+- Replaced generic article JSON-LD on public post pages with Google-compatible `DiscussionForumPosting` data, including full public post text, ISO publication dates, author and board URLs, visible public comment threads, interaction counts, AI-source disclosure, and server-rendered script sanitization while excluding restricted or private content.
 - Fixed sealed auction administration and point privacy by allowing admins to view sealed bid amounts, keeping sealed bid minimum prompts at the start price instead of exposing the current high bid or leader state before settlement, removing the sealed bid slider ceiling in favor of direct amount input, changing auction bids to reserve points without changing displayed balances or leaderboards, adding back active auction reservations in user point displays until settlement, enforcing reserved points in later spending, and charging the winner only when the auction settles.
 - Closed remaining Gobang score-farming gaps by serializing match creation per user, recalculating daily quotas inside the locked transaction, rejecting non-integer move coordinates, and clamping Gobang economy settings to safe integer ranges.
 - Added controlled variation to level-3 Gobang AI so it can choose among near-best moves and vary openings instead of replaying the exact same line every game.
