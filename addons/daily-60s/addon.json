@@ -1,0 +1,38 @@
+{
+  "id": "daily-60s",
+  "name": "每日60s",
+  "version": "1.1.6",
+  "description": "每天定时发布 60 秒看世界资讯，并在十分钟后发布十二星座今日运势。",
+  "author": "Rhex",
+  "enabled": true,
+  "entry": {
+    "server": "dist/server.mjs"
+  },
+  "permissions": [
+    "config:read",
+    "config:write",
+    "data:read",
+    "data:write",
+    "data:delete",
+    "data:migrate",
+    "page:admin",
+    "api:admin",
+    "background-job:register",
+    "background-job:enqueue",
+    "background-job:delete",
+    "network:external",
+    "post:create"
+  ],
+  "provides": {
+    "adminPages": [
+      ""
+    ],
+    "adminApis": [
+      ""
+    ],
+    "backgroundJobs": [
+      "scheduled-publish",
+      "scheduled-horoscope"
+    ]
+  }
+}

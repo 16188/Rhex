@@ -249,7 +249,6 @@ export async function ensureScheduledBackgroundJob<Name extends BackgroundJobNam
       ? options.payload(nextToken)
       : options.payload,
     delayMs: options.delayMs,
-    maxAttempts: 1,
   })
 
   if (!ensuredJob.scheduled) {

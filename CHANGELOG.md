@@ -1,5 +1,26 @@
 # Changelog
 
+## 2026-08-28
+
+- Replaced the failing Daily 60s API endpoints with the official date-specific static feed and its jsDelivr and JSDMirror mirrors, and bundled the add-on into Docker images with startup synchronization so image updates also refresh persisted add-on code without replacing runtime data.
+
+## 2026-08-01
+
+- Kept Daily 60s automatic publishing in a same-day recovery loop when both upstream feeds are stale at the configured time, retrying every fifteen minutes until current content is available while showing the retry reason and next run instead of silently waiting until the following day.
+
+## 2026-07-31
+
+- Fixed missed Daily 60s horoscope posts when the upstream `today` endpoint lagged one calendar day by accepting only date-matched data, falling back to the date-matched `nextday` response, rechecking hourly when neither response is current, and making the admin test action immediately replace stale queued work.
+
+## 2026-07-30
+
+- Restored the configured background-job retry policy for add-on scheduled jobs so transient upstream failures no longer send automatic publishing tasks directly to dead letter after a single attempt.
+- Fixed the Daily 60s add-on by detecting empty, invalid, or stale JSON responses, retrying data fetches, falling back to the Viki 60s v2 API, and allowing scheduled source failures to use the host retry policy without risking retries after post creation.
+- Extended the Daily 60s add-on to enqueue a deduplicated twelve-sign horoscope post ten minutes after daily news, with rate-limit-aware API fetching, current and legacy response compatibility, retry-safe state tracking, and automatic cancellation when the publishing task is stopped.
+- Added a standalone horoscope test action that schedules only today's horoscope post without republishing daily news.
+- Versioned every Daily 60s admin client-module URL so browser module caching cannot hide newly installed controls after an add-on upgrade.
+- Kept delayed horoscope jobs visibly in progress until publishing finishes, and exposed the current success, skip, or failure message in the add-on admin page instead of clearing the job into a misleading idle state.
+
 ## 2026-07-02
 
 - Replaced generic article JSON-LD on public post pages with Google-compatible `DiscussionForumPosting` data, including full public post text, ISO publication dates, author and board URLs, visible public comment threads, interaction counts, AI-source disclosure, and server-rendered script sanitization while excluding restricted or private content.
